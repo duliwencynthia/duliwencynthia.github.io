@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,67 +7,93 @@
   <meta name="description" content="Liwen (Cynthia) Du — PhD student in Computer Science at NC State, researching human–LLM collaboration. Also a cellist, guitarist, and flute & whistle player." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎻</text></svg>" />
+  <script>
+    try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
 </head>
 <body>
-  <header class="nav">
-    <a class="brand" href="#top">Liwen Du</a>
-    <nav>
-      <a href="#about">About</a>
-      <a href="#research">Research</a>
-      <a href="#experience">Experience</a>
-      <a href="#projects">Projects</a>
-      <a href="#music">Music</a>
-      <a href="#contact">Contact</a>
+  <div class="spotlight" aria-hidden="true"></div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="#top"><span class="brand-mark">LD</span></a>
+    <nav id="menu">
+      <a href="#about"><span class="num">01.</span> About</a>
+      <a href="#research"><span class="num">02.</span> Research</a>
+      <a href="#experience"><span class="num">03.</span> Experience</a>
+      <a href="#projects"><span class="num">04.</span> Projects</a>
+      <a href="#music"><span class="num">05.</span> Music</a>
+      <a href="#contact"><span class="num">06.</span> Contact</a>
     </nav>
+    <div class="nav-actions">
+      <button class="icon-btn" id="soundToggle" aria-pressed="false" title="Sound on/off">
+        <span class="sound-off">🔇</span><span class="sound-on">🔊</span>
+      </button>
+      <button class="icon-btn" id="themeToggle" title="Toggle light/dark">
+        <span class="moon">☾</span><span class="sun">☀</span>
+      </button>
+      <button class="icon-btn burger" id="burger" aria-label="Menu" aria-expanded="false">☰</button>
+    </div>
   </header>
 
-  <main id="top">
-    <!-- Hero -->
-    <section class="hero">
-      <p class="eyebrow">PhD Student · Computer Science · NC State University</p>
-      <h1>Liwen <span class="accent">(Cynthia)</span> Du</h1>
-      <p class="lede">
-        I build LLM agents that collaborate with people, not just answer them.
-        My research sits where human–AI interaction, natural language processing,
-        and social science meet. When I'm away from the keyboard, I'm usually holding a cello, a guitar, or a flute.
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <canvas id="strings" aria-hidden="true"></canvas>
+    <div class="hero-inner">
+      <p class="mono accent reveal">Hi, my name is</p>
+      <h1 class="reveal">Liwen <span class="grad">(Cynthia)</span> Du.</h1>
+      <h2 class="hero-sub reveal">I build <span id="typed" class="typed"></span><span class="caret">|</span></h2>
+      <p class="lede reveal">
+        PhD student in Computer Science at NC State. I study how LLM agents can be good teammates
+        to people, not just answer their questions. Off the keyboard, I play cello, guitar, flute, and tin whistle.
       </p>
-      <div class="links">
-        <a class="btn primary" href="mailto:ldu2@ncsu.edu">Email me</a>
-        <a class="btn" href="https://github.com/duliwencynthia" target="_blank" rel="noopener">GitHub</a>
-        <a class="btn" href="https://www.linkedin.com/in/liwen-cynthia-du-b739731ab/" target="_blank" rel="noopener">LinkedIn</a>
+      <div class="links reveal">
+        <a class="btn primary" href="#research">See my research</a>
+        <a class="btn" href="#music">Hear the music ♪</a>
       </div>
-    </section>
+      <p class="hint mono reveal">↕ Move your cursor across the strings to play them. Turn on 🔊 to hear them.</p>
+    </div>
+  </section>
 
+  <main>
     <!-- About -->
     <section id="about">
-      <h2>About</h2>
+      <h2 class="section-title reveal"><span class="num">01.</span> About me</h2>
       <div class="two-col">
-        <div>
+        <div class="reveal">
           <p>
-            I'm a PhD student in Computer Science at North Carolina State University, where I also
-            earned my Master of Computer Science. My current work looks at how LLM-based agents can
-            communicate like good teammates: negotiating plans, coordinating actions, and being
-            polite in a way that fits the context rather than as decoration.
+            I'm a PhD student in Computer Science at <strong>North Carolina State University</strong>, where I
+            also earned my Master of Computer Science. My research asks how LLM-based agents can
+            communicate like good collaborators: negotiating plans, coordinating actions, and being polite
+            in a way that fits the context rather than as decoration.
           </p>
           <p>
-            Before that I worked across NLP, machine learning for cybersecurity, empirical software
-            engineering, and full-stack development.
+            Along the way I've worked on NLP for medical dialogue, machine learning for cyber-threat
+            intelligence, empirical software engineering, and full-stack web development.
           </p>
+          <p>Some things I've been working with lately:</p>
+          <ul class="tri-list">
+            <li>LLM agents &amp; prompting</li>
+            <li>Human-subject studies</li>
+            <li>Python · PyTorch · TensorFlow</li>
+            <li>RoBERTa / BERT</li>
+            <li>React · Node.js · Django</li>
+            <li>AWS · MongoDB · MySQL</li>
+          </ul>
         </div>
-        <div class="card education">
+        <div class="card edu-card tilt reveal">
           <h3>Education</h3>
           <div class="edu">
-            <strong>PhD in Computer Science</strong>
-            <span>North Carolina State University · Raleigh, NC</span>
-            <span class="muted">Aug 2024 – Present</span>
+            <span class="mono accent small">Aug 2024 – Present</span>
+            <strong>PhD, Computer Science</strong>
+            <span class="muted">North Carolina State University</span>
           </div>
           <div class="edu">
+            <span class="mono accent small">Aug 2021 – May 2023</span>
             <strong>Master of Computer Science</strong>
-            <span>North Carolina State University · Raleigh, NC</span>
-            <span class="muted">Aug 2021 – May 2023</span>
+            <span class="muted">North Carolina State University</span>
           </div>
         </div>
       </div>
@@ -75,63 +101,70 @@
 
     <!-- Research -->
     <section id="research">
-      <h2>Research</h2>
+      <h2 class="section-title reveal"><span class="num">02.</span> Research</h2>
 
-      <article class="card feature">
-        <div class="meta"><span class="tag">Human–AI Interaction</span><span class="muted">Jul 2025 – Aug 2026</span></div>
+      <article class="card feature tilt reveal">
+        <div class="feature-glow" aria-hidden="true"></div>
+        <p class="mono accent small">Featured · Human–AI Interaction · Jul 2025 – Aug 2026</p>
         <h3>Beyond Being Nice, Cook Up Collaboration: Context-Aware Politeness for Human–LLM Teams</h3>
         <ul>
           <li>Developed <strong>Plato</strong>, an LLM-based collaborative agent that negotiates plans, coordinates actions, and carries out shared tasks with humans in <em>Overcooked</em>.</li>
           <li>Designed a context-aware politeness framework grounded in Brown–Levinson and Spencer–Oatey. It turns social face, autonomy, and interactional goals into concrete communication strategies.</li>
           <li>Built an end-to-end human–LLM interaction system: structured prompting, dialogue management, conversation summarization, game-state feedback, and LLM-generated actions for real-time collaboration.</li>
-          <li>Led a human-subject study from start to finish: experimental protocol, counterbalancing, recruitment, sessions, and behavioral and survey analysis. Plato was compared against a human Wizard-of-Oz and a non-politeness AI baseline.</li>
+          <li>Led a human-subject study from start to finish: protocol, counterbalancing, recruitment, sessions, and analysis. Plato was compared against a human Wizard-of-Oz and a non-politeness AI baseline.</li>
         </ul>
         <div class="chips"><span>LLM Agents</span><span>Dialogue Systems</span><span>Politeness Theory</span><span>User Studies</span></div>
       </article>
 
       <div class="grid">
-        <article class="card">
-          <div class="meta"><span class="tag">ML · Security</span><span class="muted">Feb – May 2025</span></div>
+        <article class="card tilt reveal">
+          <div class="card-top"><span class="folder">⌘</span><span class="mono muted small">Feb – May 2025</span></div>
           <h3>Advancing Cyberthreat Analysis with MITRE ATT&amp;CK Reports</h3>
-          <ul>
-            <li>Built an ML pipeline that classifies cyber threats from MITRE ATT&amp;CK-aligned intelligence reports.</li>
-            <li>Handled class imbalance with SMOTE and sped up training with Random Projection.</li>
-            <li>Fine-tuned RoBERTa for multi-class classification, cutting training time by 35% and making minority-class results more stable.</li>
-          </ul>
+          <p>An ML pipeline that classifies cyber threats from MITRE ATT&amp;CK-aligned intelligence reports. It uses SMOTE for class imbalance and Random Projection for efficiency. The fine-tuned RoBERTa model <strong>cut training time by 35%</strong> and made minority-class results more stable.</p>
           <div class="chips"><span>RoBERTa</span><span>SMOTE</span><span>NLP</span></div>
         </article>
-        <article class="card">
-          <div class="meta"><span class="tag">Software Engineering</span><span class="muted">Jun – Dec 2024</span></div>
+        <article class="card tilt reveal">
+          <div class="card-top"><span class="folder">⟲</span><span class="mono muted small">Jun – Dec 2024</span></div>
           <h3>Could Refactoring Help with Software Migration?</h3>
-          <ul>
-            <li>Studied how code smells and refactoring patterns affect large-scale software migration.</li>
-            <li>Ran structured interviews with professional engineers to test hypotheses and collect practical insights.</li>
-          </ul>
+          <p>A study of how code smells and refactoring patterns affect large-scale software migration. I tested the hypotheses through structured interviews with professional engineers.</p>
           <div class="chips"><span>Empirical SE</span><span>Interviews</span><span>Refactoring</span></div>
         </article>
       </div>
     </section>
 
-    <!-- Experience -->
+    <!-- Experience (tabs) -->
     <section id="experience">
-      <h2>Industry &amp; Research Experience</h2>
-      <div class="timeline">
-        <div class="item">
-          <div class="when">May – Aug 2022</div>
-          <div class="what">
-            <h3>Software Engineer Intern <span class="muted">· BridXe, Los Angeles</span></h3>
-            <ul>
+      <h2 class="section-title reveal"><span class="num">03.</span> Where I've worked</h2>
+      <div class="tabs reveal">
+        <div class="tab-list" role="tablist">
+          <button role="tab" class="tab active" aria-selected="true" data-tab="ncsu">NC State</button>
+          <button role="tab" class="tab" aria-selected="false" data-tab="bridxe">BridXe</button>
+          <button role="tab" class="tab" aria-selected="false" data-tab="zju">Zhejiang Univ.</button>
+          <span class="tab-indicator" aria-hidden="true"></span>
+        </div>
+        <div class="tab-panels">
+          <div class="panel active" id="ncsu" role="tabpanel">
+            <h3>PhD Researcher <span class="accent">@ NC State University</span></h3>
+            <p class="mono muted small">Aug 2024 – Present · Raleigh, NC</p>
+            <ul class="tri-list block">
+              <li>Build LLM agents for real-time human–AI collaboration (Plato, in Overcooked).</li>
+              <li>Design and run human-subject studies with counterbalanced protocols.</li>
+              <li>Research ML for cyber-threat intelligence and refactoring for software migration.</li>
+            </ul>
+          </div>
+          <div class="panel" id="bridxe" role="tabpanel">
+            <h3>Software Engineer Intern <span class="accent">@ BridXe</span></h3>
+            <p class="mono muted small">May – Aug 2022 · Los Angeles, CA</p>
+            <ul class="tri-list block">
               <li>Built back-end services for a marketplace that handles phygital product resale and supply-chain tracking.</li>
               <li>Designed MongoDB schemas and RESTful Node.js/Express.js APIs for product and brand management.</li>
               <li>Built an NFT analytics module in Python/Django and deployed the full stack on AWS.</li>
             </ul>
           </div>
-        </div>
-        <div class="item">
-          <div class="when">Sep 2020 – Jun 2021</div>
-          <div class="what">
-            <h3>Research Assistant Programmer Intern <span class="muted">· Zhejiang University</span></h3>
-            <ul>
+          <div class="panel" id="zju" role="tabpanel">
+            <h3>Research Assistant Programmer Intern <span class="accent">@ Zhejiang University</span></h3>
+            <p class="mono muted small">Sep 2020 – Jun 2021 · Hangzhou, China</p>
+            <ul class="tri-list block">
               <li>Supported NLP research for an online conversational medical diagnosis system.</li>
               <li>Built medical response generation models with Knowledge Graphs, RNNs, and LSTMs in TensorFlow.</li>
               <li>Collected medical dialogue data with Scrapy and pre-trained with BERT, improving accuracy by 15%.</li>
@@ -143,86 +176,93 @@
 
     <!-- Projects -->
     <section id="projects">
-      <h2>Projects</h2>
+      <h2 class="section-title reveal"><span class="num">04.</span> Things I've built</h2>
       <div class="grid">
-        <article class="card">
-          <div class="meta"><span class="muted">May – Jun 2021</span></div>
-          <h3>FilmLast: Movie Information Platform</h3>
-          <p>A full-stack app for browsing new, upcoming, and classic movies. It uses movie data scraped from IMDb, a Java Spring back end, a React.js front end, and a Node.js chatbot that helps users find films. Deployed on AWS.</p>
+        <article class="card tilt reveal">
+          <div class="card-top"><span class="folder">🎬</span><span class="mono muted small">May – Jun 2021</span></div>
+          <h3>FilmLast</h3>
+          <p>A movie platform for browsing new, upcoming, and classic films. It uses data scraped from IMDb, a Java Spring back end, a React.js front end, and a Node.js chatbot that helps users find movies. Deployed on AWS.</p>
           <div class="chips"><span>Java</span><span>Spring</span><span>React.js</span><span>MySQL</span><span>AWS</span></div>
         </article>
-        <article class="card">
-          <div class="meta"><span class="muted">Oct – Nov 2021</span></div>
-          <h3>Expertiza: Instructor–Student Collaboration</h3>
-          <p>Contributed to the open-source Expertiza platform. I improved review and submission grade trails in Ruby on Rails, managed MySQL schema updates, wrote RSpec tests, and deployed on Heroku.</p>
+        <article class="card tilt reveal">
+          <div class="card-top"><span class="folder">🎓</span><span class="mono muted small">Oct – Nov 2021</span></div>
+          <h3>Expertiza</h3>
+          <p>Contributions to the open-source instructor–student platform. I improved review and submission grade trails in Rails, managed MySQL schema updates, wrote RSpec tests, and deployed on Heroku.</p>
           <div class="chips"><span>Ruby on Rails</span><span>MySQL</span><span>RSpec</span><span>Heroku</span></div>
         </article>
       </div>
     </section>
 
-    <!-- Skills -->
-    <section id="skills">
-      <h2>Toolbox</h2>
-      <div class="skills">
-        <div><h4>AI / ML</h4><p>LLM agents, prompting, RoBERTa, BERT, TensorFlow, RNN/LSTM, Knowledge Graphs, SMOTE</p></div>
-        <div><h4>Languages</h4><p>Python, Java, JavaScript, Ruby, SQL</p></div>
-        <div><h4>Web &amp; Cloud</h4><p>React.js, Node.js, Express.js, Django, Spring, Rails, MongoDB, MySQL, AWS, Heroku</p></div>
-        <div><h4>Research Methods</h4><p>Human-subject studies, experimental design, counterbalancing, interviews, survey analysis</p></div>
-      </div>
-    </section>
-
     <!-- Music -->
-    <section id="music" class="music">
-      <h2>Music</h2>
-      <p class="lede small">
-        Music is my other language. I play classical repertoire as well as folk traditions from around
-        the world, and I'm always happy to play with other people, whether that's an ensemble,
-        a session, or a jam.
+    <section id="music">
+      <h2 class="section-title reveal"><span class="num">05.</span> Off-stage… on stage</h2>
+      <p class="lede reveal">
+        Music is my other language. I play classical repertoire as well as folk traditions from around the world.
+        <strong>Click an instrument</strong> to hear a little phrase. (It's synthesized in your browser, so it's
+        nowhere near as good as the real thing.)
       </p>
 
+      <canvas id="visualizer" class="visualizer reveal" aria-hidden="true"></canvas>
+
       <div class="instruments">
-        <div class="inst"><span class="icon" aria-hidden="true">🎻</span><h4>Cello</h4></div>
-        <div class="inst"><span class="icon" aria-hidden="true">🎸</span><h4>Guitar</h4></div>
-        <div class="inst"><span class="icon" aria-hidden="true">🪈</span><h4>Flute</h4></div>
-        <div class="inst"><span class="icon" aria-hidden="true">🎶</span><h4>Tin Whistle</h4></div>
+        <button class="inst tilt reveal" data-inst="cello">
+          <span class="icon">🎻</span><strong>Cello</strong><span class="mono small muted">Bach · Suite No. 1</span>
+        </button>
+        <button class="inst tilt reveal" data-inst="guitar">
+          <span class="icon">🎸</span><strong>Guitar</strong><span class="mono small muted">Spanish · Phrygian</span>
+        </button>
+        <button class="inst tilt reveal" data-inst="flute">
+          <span class="icon">🪈</span><strong>Flute</strong><span class="mono small muted">Andean air</span>
+        </button>
+        <button class="inst tilt reveal" data-inst="whistle">
+          <span class="icon">🎶</span><strong>Tin Whistle</strong><span class="mono small muted">Celtic jig</span>
+        </button>
       </div>
 
-      <div class="genres">
-        <h3>What I play</h3>
-        <div class="chips big">
-          <span>Classical</span>
-          <span>Celtic</span>
-          <span>Spanish</span>
-          <span>South American</span>
-          <span>Rock</span>
-          <span>A little Jazz</span>
+      <div class="genres reveal">
+        <p class="mono accent small">Genres I play</p>
+        <div class="genre-row">
+          <span class="genre" style="--h:92%">Classical</span>
+          <span class="genre" style="--h:85%">Celtic</span>
+          <span class="genre" style="--h:75%">Spanish</span>
+          <span class="genre" style="--h:70%">South American</span>
+          <span class="genre" style="--h:60%">Rock</span>
+          <span class="genre" style="--h:30%">A little Jazz</span>
         </div>
       </div>
 
-      <div class="card music-contact">
+      <div class="card music-contact reveal">
         <div>
-          <h3>Let's make music</h3>
-          <p>Looking for a cellist, guitarist, or someone to bring a whistle to the session? Get in touch.</p>
+          <h3>Let's make music 🎼</h3>
+          <p class="muted">Need a cellist or guitarist, or someone to bring a whistle to the session? Get in touch.</p>
         </div>
         <a class="btn primary" href="mailto:duliwe3.25@gmail.com">duliwe3.25@gmail.com</a>
       </div>
     </section>
 
     <!-- Contact -->
-    <section id="contact">
-      <h2>Contact</h2>
-      <div class="contact-grid">
-        <a class="card contact" href="mailto:ldu2@ncsu.edu"><span class="label">Research &amp; professional</span><span>ldu2@ncsu.edu</span></a>
-        <a class="card contact" href="mailto:duliwe3.25@gmail.com"><span class="label">Music</span><span>duliwe3.25@gmail.com</span></a>
-        <a class="card contact" href="https://github.com/duliwencynthia" target="_blank" rel="noopener"><span class="label">GitHub</span><span>duliwencynthia</span></a>
-        <a class="card contact" href="https://www.linkedin.com/in/liwen-cynthia-du-b739731ab/" target="_blank" rel="noopener"><span class="label">LinkedIn</span><span>Liwen (Cynthia) Du</span></a>
+    <section id="contact" class="contact">
+      <p class="mono accent reveal"><span class="num">06.</span> What's next?</p>
+      <h2 class="big-title reveal">Get in touch</h2>
+      <p class="lede center reveal">
+        I'm open to research collaborations, internships, and interesting conversations about human–AI
+        teamwork. For music, use the music email below.
+      </p>
+      <div class="links center reveal">
+        <a class="btn primary" href="mailto:ldu2@ncsu.edu">Say hello · ldu2@ncsu.edu</a>
+        <a class="btn" href="mailto:duliwe3.25@gmail.com">Music · duliwe3.25@gmail.com</a>
+      </div>
+      <div class="socials reveal">
+        <a href="https://github.com/duliwencynthia" target="_blank" rel="noopener">GitHub ↗</a>
+        <a href="https://www.linkedin.com/in/liwen-cynthia-du-b739731ab/" target="_blank" rel="noopener">LinkedIn ↗</a>
       </div>
     </section>
   </main>
 
   <footer>
-    <p>© <span id="year">2026</span> Liwen (Cynthia) Du · Durham, NC</p>
+    <p class="mono small">Designed &amp; built by Liwen (Cynthia) Du · <span id="year">2026</span></p>
   </footer>
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+
+  <script src="script.js"></script>
 </body>
 </html>
