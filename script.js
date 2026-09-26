@@ -256,8 +256,8 @@
   const g2d = canvas.getContext('2d');
   const NOTE_NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
   const noteName = (m) => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
-  const MAX_SEMIS = 24;                        // two octaves of fingerboard
-  const BOARD_END = 1 - Math.pow(2, -MAX_SEMIS / 12); // fraction of string length (0.75)
+  const MAX_SEMIS = 36;                        // three octaves: the board runs almost to the bridge
+  const BOARD_END = 1 - Math.pow(2, -MAX_SEMIS / 12); // fraction of string length (0.875)
   const strings = [
     { open: 57, name: 'A', width: 1.3 },
     { open: 50, name: 'D', width: 1.8 },
@@ -272,8 +272,8 @@
     W = hero.clientWidth; H = hero.clientHeight;
     canvas.width = W * dpr; canvas.height = H * dpr;
     g2d.setTransform(dpr, 0, 0, dpr, 0, 0);
-    nutX = W * 0.06; bridgeX = W * 0.94;
-    const top = H * 0.26, bottom = H * 0.76;
+    nutX = Math.max(30, W * 0.03); bridgeX = W - Math.max(14, W * 0.015);
+    const top = H * 0.2, bottom = H * 0.84;
     gap = (bottom - top) / (strings.length - 1);
     strings.forEach((s, i) => { s.y = top + gap * i; s.stopX = nutX; });
   };
@@ -284,8 +284,8 @@
   // Continuous semitones above the open string for a finger at x (0 past the fingerboard = open string).
   const semisAt = (x) => {
     const f = (x - nutX) / (bridgeX - nutX);
-    if (f <= 0 || f > BOARD_END + 0.02) return 0;
-    return Math.min(MAX_SEMIS, -12 * Math.log2(1 - f));
+    if (f <= 0) return 0;
+    return Math.min(MAX_SEMIS, -12 * Math.log2(1 - Math.min(f, BOARD_END)));
   };
   const visOmega = (hz) => Math.min(1.6, 0.16 * Math.sqrt(hz / 20));
 
@@ -427,14 +427,15 @@
     const top = strings[0].y - gap * 0.55, bot = strings[strings.length - 1].y + gap * 0.55;
     const boardEndX = xAt(MAX_SEMIS);
 
-    // Fingerboard
-    const fb = g2d.createLinearGradient(nutX, 0, boardEndX, 0);
-    fb.addColorStop(0, dark ? 'rgba(125,211,252,.07)' : 'rgba(3,105,161,.07)');
-    fb.addColorStop(1, dark ? 'rgba(125,211,252,.02)' : 'rgba(3,105,161,.025)');
+    // Fingerboard: fills the whole hero, nut to bridge
+    const fb = g2d.createLinearGradient(nutX, 0, bridgeX, 0);
+    fb.addColorStop(0, dark ? 'rgba(125,211,252,.08)' : 'rgba(3,105,161,.075)');
+    fb.addColorStop(0.7, dark ? 'rgba(125,211,252,.045)' : 'rgba(3,105,161,.04)');
+    fb.addColorStop(1, dark ? 'rgba(125,211,252,.02)' : 'rgba(3,105,161,.02)');
     g2d.fillStyle = fb;
-    g2d.beginPath();
-    g2d.moveTo(nutX, top + gap * 0.12); g2d.lineTo(boardEndX, top); g2d.lineTo(boardEndX, bot); g2d.lineTo(nutX, bot - gap * 0.12);
-    g2d.closePath(); g2d.fill();
+    g2d.fillRect(nutX, 0, boardEndX - nutX, H);
+    g2d.fillStyle = dark ? 'rgba(125,211,252,.12)' : 'rgba(3,105,161,.1)';
+    g2d.fillRect(boardEndX - 1, 0, 2, H);
 
     // Position markers: faint semitone lines, dots at the 4th, 5th, octave…
     const activeSemis = new Set();
@@ -443,8 +444,8 @@
       const x = xAt(n);
       g2d.strokeStyle = activeSemis.has(n) ? (dark ? 'rgba(56,189,248,.45)' : 'rgba(14,165,233,.4)') : (dark ? 'rgba(186,214,235,.07)' : 'rgba(3,105,161,.07)');
       g2d.lineWidth = activeSemis.has(n) ? 1.5 : 1;
-      g2d.beginPath(); g2d.moveTo(x, top + 4); g2d.lineTo(x, bot - 4); g2d.stroke();
-      if ([5, 7, 12, 17, 19, 24].includes(n)) {
+      g2d.beginPath(); g2d.moveTo(x, 0); g2d.lineTo(x, H); g2d.stroke();
+      if ([5, 7, 12, 17, 19, 24, 29, 31, 36].includes(n)) {
         g2d.fillStyle = dark ? 'rgba(125,211,252,.28)' : 'rgba(3,105,161,.22)';
         const ys = n % 12 === 0 ? [strings[0].y + gap * 0.5, strings[2].y + gap * 0.5] : [strings[1].y + gap * 0.5];
         ys.forEach((yy) => { g2d.beginPath(); g2d.arc(x, yy, 2.6, 0, Math.PI * 2); g2d.fill(); });
