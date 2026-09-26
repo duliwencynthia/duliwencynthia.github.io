@@ -246,50 +246,167 @@
   soundBtn.addEventListener('click', () => {
     soundOn = !soundOn;
     soundBtn.setAttribute('aria-pressed', soundOn);
-    if (soundOn && ensureAudio()) pluck(64, ctx.currentTime + 0.02, 1.5, 0.4);
+    if (soundOn && ensureAudio()) pluck(48, ctx.currentTime + 0.02, 1.5, 0.4);
   });
 
-  /* ---------- Hero: pluckable strings ---------- */
+  /* ---------- Hero: a playable cello ---------- */
+  // Four strings tuned C2 G2 D3 A3. The cursor acts as the finger: where it crosses
+  // a string sets the stopped length (and pitch), like a real fretless fingerboard.
   const canvas = $('strings');
   const g2d = canvas.getContext('2d');
-  const STRING_NOTES = [64, 59, 55, 50, 45, 40]; // guitar standard tuning, high → low
-  let W = 0, H = 0, dpr = 1;
-  const strings = STRING_NOTES.map((note, i) => ({ note, i, y: 0, amp: 0, x0: 0.5, t: 0, cool: 0 }));
+  const NOTE_NAMES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+  const noteName = (m) => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  const MAX_SEMIS = 24;                        // two octaves of fingerboard
+  const BOARD_END = 1 - Math.pow(2, -MAX_SEMIS / 12); // fraction of string length (0.75)
+  const strings = [
+    { open: 57, name: 'A', width: 1.3 },
+    { open: 50, name: 'D', width: 1.8 },
+    { open: 43, name: 'G', width: 2.4 },
+    { open: 36, name: 'C', width: 3.1 },
+  ].map((s, i) => ({ ...s, i, y: 0, amp: 0, t: 0, phase: 0, omega: 0.3, stopX: 0, cool: 0, bowing: false }));
+  let W = 0, H = 0, dpr = 1, nutX = 0, bridgeX = 0, gap = 0;
+  const labels = [];
 
   const resize = () => {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = hero.clientWidth; H = hero.clientHeight;
     canvas.width = W * dpr; canvas.height = H * dpr;
     g2d.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const top = H * 0.2, span = H * 0.62;
-    strings.forEach((s, i) => { s.y = top + span * (i / (strings.length - 1)); });
+    nutX = W * 0.06; bridgeX = W * 0.94;
+    const top = H * 0.26, bottom = H * 0.76;
+    gap = (bottom - top) / (strings.length - 1);
+    strings.forEach((s, i) => { s.y = top + gap * i; s.stopX = nutX; });
   };
   resize();
   window.addEventListener('resize', resize);
 
+  const xAt = (semis) => nutX + (bridgeX - nutX) * (1 - Math.pow(2, -semis / 12));
+  // Continuous semitones above the open string for a finger at x (0 past the fingerboard = open string).
+  const semisAt = (x) => {
+    const f = (x - nutX) / (bridgeX - nutX);
+    if (f <= 0 || f > BOARD_END + 0.02) return 0;
+    return Math.min(MAX_SEMIS, -12 * Math.log2(1 - f));
+  };
+  const visOmega = (hz) => Math.min(1.6, 0.16 * Math.sqrt(hz / 20));
+
+  const addLabel = (x, y, text) => {
+    labels.push({ x, y, text, t: 0 });
+    if (labels.length > 12) labels.shift();
+  };
+
+  // Pizzicato: Karplus–Strong with a darker, longer cello decay
+  const pizz = (hz, vol = 0.5) => {
+    const sr = ctx.sampleRate, len = Math.floor(sr * 2.2), period = Math.max(2, Math.round(sr / hz));
+    const buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    for (let i = 0; i < period; i++) d[i] = Math.random() * 2 - 1;
+    for (let i = period; i < len; i++) d[i] = 0.9975 * 0.5 * (d[i - period] + d[i - period + 1]);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800 + hz * 2;
+    const body = ctx.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 220; body.gain.value = 6; body.Q.value = 1;
+    const g = ctx.createGain(); g.gain.value = vol;
+    src.connect(lp); lp.connect(body); body.connect(g); g.connect(master);
+    src.start();
+  };
+
+  const pluckString = (s, x, strength) => {
+    const semis = Math.round(semisAt(x));
+    const midi = s.open + semis;
+    s.stopX = semis === 0 ? nutX : xAt(semis);
+    s.amp = Math.min(22, 5 + strength) * (Math.random() < 0.5 ? -1 : 1);
+    s.t = 0; s.cool = 5;
+    s.omega = visOmega(freq(midi));
+    addLabel(semis === 0 ? (nutX + bridgeX) / 2 : s.stopX, s.y, semis === 0 ? noteName(midi) + ' · open' : noteName(midi));
+    if (soundOn && ensureAudio()) pizz(freq(midi));
+  };
+
+  // Bowing: a sustained voice whose pitch glides with the finger
+  let bow = null;
+  const startBow = (s, x) => {
+    if (!ensureAudio()) return;
+    const hz = freq(s.open + semisAt(x));
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = hz;
+    const osc2 = ctx.createOscillator(); osc2.type = 'sawtooth'; osc2.frequency.value = hz; osc2.detune.value = 6;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.3;
+    const lfoG = ctx.createGain(); lfoG.gain.setValueAtTime(0, now); lfoG.gain.linearRampToValueAtTime(hz * 0.006, now + 0.5);
+    lfo.connect(lfoG); lfoG.connect(osc.frequency); lfoG.connect(osc2.frequency);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300; lp.Q.value = 0.8;
+    const body = ctx.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 250; body.gain.value = 5;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.2, now + 0.12);
+    osc.connect(lp); osc2.connect(lp); lp.connect(body); body.connect(g); g.connect(master);
+    osc.start(now); osc2.start(now); lfo.start(now);
+    bow = { s, osc, osc2, lfo, lfoG, g, lastNote: null };
+    s.bowing = true;
+    moveBow(x);
+  };
+  const moveBow = (x) => {
+    if (!bow) return;
+    const s = bow.s, semis = semisAt(x), hz = freq(s.open + semis), now = ctx.currentTime;
+    bow.osc.frequency.setTargetAtTime(hz, now, 0.025);
+    bow.osc2.frequency.setTargetAtTime(hz, now, 0.025);
+    bow.lfoG.gain.setTargetAtTime(hz * 0.006, now, 0.2);
+    s.stopX = semis === 0 ? nutX : Math.min(x, xAt(MAX_SEMIS));
+    s.omega = visOmega(hz);
+    const nearest = s.open + Math.round(semis);
+    if (nearest !== bow.lastNote) {
+      bow.lastNote = nearest;
+      addLabel(semis === 0 ? (nutX + bridgeX) / 2 : s.stopX, s.y, noteName(nearest));
+    }
+  };
+  const stopBow = () => {
+    if (!bow) return;
+    const now = ctx.currentTime, b = bow;
+    b.g.gain.setTargetAtTime(0.0001, now, 0.09);
+    [b.osc, b.osc2, b.lfo].forEach((o) => o.stop(now + 0.6));
+    b.s.bowing = false; b.s.t = 0; b.s.amp = 3;
+    bow = null;
+  };
+
+  const localPos = (e) => { const r = hero.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const stringNear = (x, y) => {
+    if (x < nutX || x > bridgeX) return null;
+    let best = null, bd = Math.min(18, gap / 2);
+    strings.forEach((s) => { const d = Math.abs(y - s.y); if (d < bd) { bd = d; best = s; } });
+    return best;
+  };
+
   let prev = null;
-  const onMove = (x, y) => {
-    if (prev) {
-      const dy = y - prev.y, speed = Math.hypot(x - prev.x, dy);
+  hero.addEventListener('pointermove', (e) => {
+    const { x, y } = localPos(e);
+    if (bow) { moveBow(x); prev = { x, y }; return; }
+    if (e.pointerType === 'mouse') hero.style.cursor = stringNear(x, y) ? 'pointer' : '';
+    if (prev && x >= nutX && x <= bridgeX) {
+      const speed = Math.hypot(x - prev.x, y - prev.y);
       strings.forEach((s) => {
-        if ((prev.y - s.y) * (y - s.y) <= 0 && prev.y !== y && s.cool <= 0) {
-          s.amp = Math.min(26, 6 + speed * 0.6) * Math.sign(dy || 1);
-          s.x0 = Math.min(0.95, Math.max(0.05, x / W));
-          s.t = 0; s.cool = 6;
-          if (soundOn && ctx) pluck(s.note, ctx.currentTime + 0.005, 2, 0.35);
-        }
+        if ((prev.y - s.y) * (y - s.y) <= 0 && prev.y !== y && s.cool <= 0 && !s.bowing) pluckString(s, x, speed * 0.5);
       });
     }
     prev = { x, y };
-  };
-  hero.addEventListener('pointermove', (e) => {
-    const r = hero.getBoundingClientRect();
-    onMove(e.clientX - r.left, e.clientY - r.top);
   }, { passive: true });
-  hero.addEventListener('pointerleave', () => { prev = null; });
+  hero.addEventListener('pointerleave', () => { prev = null; if (!bow) hero.style.cursor = ''; });
+  hero.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('a, button')) return;
+    const { x, y } = localPos(e);
+    const s = stringNear(x, y);
+    if (!s) return;
+    if (!soundOn) { soundOn = true; soundBtn.setAttribute('aria-pressed', 'true'); }
+    if (e.pointerType === 'touch') { ensureAudio(); pluckString(s, x, 10); return; }
+    e.preventDefault();
+    hero.setPointerCapture(e.pointerId);
+    hero.style.cursor = 'grabbing';
+    startBow(s, x);
+  });
+  const endBow = () => { stopBow(); hero.style.cursor = ''; };
+  hero.addEventListener('pointerup', endBow);
+  hero.addEventListener('pointercancel', endBow);
+  window.addEventListener('blur', endBow);
   hero.addEventListener('touchmove', (e) => {
     const r = hero.getBoundingClientRect(), tt = e.touches[0];
-    onMove(tt.clientX - r.left, tt.clientY - r.top);
+    const x = tt.clientX - r.left, y = tt.clientY - r.top;
+    if (prev && x >= nutX && x <= bridgeX) {
+      strings.forEach((s) => { if ((prev.y - s.y) * (y - s.y) <= 0 && prev.y !== y && s.cool <= 0) pluckString(s, x, 8); });
+    }
+    prev = { x, y };
   }, { passive: true });
   hero.addEventListener('touchend', () => { prev = null; });
 
@@ -303,33 +420,116 @@
     updateHero();
     idle += 0.016;
     g2d.clearRect(0, 0, W, H);
-    const sky = css('--sky'), skyLight = css('--sky-light'), line = css('--string');
-    strings.forEach((s) => {
-      s.t += 1; s.cool -= 1;
-      const decay = Math.exp(-s.t / 55);
-      const a = s.amp * decay * Math.cos(s.t * (0.55 + s.i * 0.05));
-      const active = Math.abs(s.amp * decay) > 0.6;
-      const breathe = reduceMotion ? 0 : Math.sin(idle * 0.8 + s.i) * 1.2;
-      g2d.beginPath();
-      const steps = 80, x0 = s.x0 * W;
-      for (let k = 0; k <= steps; k++) {
-        const x = (k / steps) * W;
-        const shape = x < x0 ? x / x0 : (W - x) / (W - x0);
-        const y = s.y + a * shape + breathe * Math.sin((k / steps) * Math.PI);
-        k === 0 ? g2d.moveTo(x, y) : g2d.lineTo(x, y);
+    const dark = root.dataset.theme === 'dark';
+    const sky = css('--sky'), skyLight = css('--sky-light');
+    const steel = dark ? 'rgba(186,214,235,.55)' : 'rgba(62,92,118,.5)';
+    const shine = dark ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.9)';
+    const top = strings[0].y - gap * 0.55, bot = strings[strings.length - 1].y + gap * 0.55;
+    const boardEndX = xAt(MAX_SEMIS);
+
+    // Fingerboard
+    const fb = g2d.createLinearGradient(nutX, 0, boardEndX, 0);
+    fb.addColorStop(0, dark ? 'rgba(125,211,252,.07)' : 'rgba(3,105,161,.07)');
+    fb.addColorStop(1, dark ? 'rgba(125,211,252,.02)' : 'rgba(3,105,161,.025)');
+    g2d.fillStyle = fb;
+    g2d.beginPath();
+    g2d.moveTo(nutX, top + gap * 0.12); g2d.lineTo(boardEndX, top); g2d.lineTo(boardEndX, bot); g2d.lineTo(nutX, bot - gap * 0.12);
+    g2d.closePath(); g2d.fill();
+
+    // Position markers: faint semitone lines, dots at the 4th, 5th, octave…
+    const activeSemis = new Set();
+    strings.forEach((s) => { if (s.bowing || Math.abs(s.amp) * Math.exp(-s.t / 60) > 0.6) activeSemis.add(Math.round(semisAt(s.stopX + 0.5))); });
+    for (let n = 1; n <= MAX_SEMIS; n++) {
+      const x = xAt(n);
+      g2d.strokeStyle = activeSemis.has(n) ? (dark ? 'rgba(56,189,248,.45)' : 'rgba(14,165,233,.4)') : (dark ? 'rgba(186,214,235,.07)' : 'rgba(3,105,161,.07)');
+      g2d.lineWidth = activeSemis.has(n) ? 1.5 : 1;
+      g2d.beginPath(); g2d.moveTo(x, top + 4); g2d.lineTo(x, bot - 4); g2d.stroke();
+      if ([5, 7, 12, 17, 19, 24].includes(n)) {
+        g2d.fillStyle = dark ? 'rgba(125,211,252,.28)' : 'rgba(3,105,161,.22)';
+        const ys = n % 12 === 0 ? [strings[0].y + gap * 0.5, strings[2].y + gap * 0.5] : [strings[1].y + gap * 0.5];
+        ys.forEach((yy) => { g2d.beginPath(); g2d.arc(x, yy, 2.6, 0, Math.PI * 2); g2d.fill(); });
       }
+    }
+
+    // Nut and bridge
+    g2d.fillStyle = dark ? 'rgba(230,242,251,.5)' : 'rgba(11,27,43,.35)';
+    g2d.fillRect(nutX - 3, top + gap * 0.1, 5, bot - top - gap * 0.2);
+    g2d.fillStyle = dark ? 'rgba(125,211,252,.35)' : 'rgba(3,105,161,.3)';
+    g2d.beginPath();
+    g2d.moveTo(bridgeX - 5, bot - 2); g2d.lineTo(bridgeX - 3, top + 2);
+    g2d.quadraticCurveTo(bridgeX, top - 6, bridgeX + 3, top + 2); g2d.lineTo(bridgeX + 5, bot - 2); g2d.closePath(); g2d.fill();
+
+    // Open-string names at the nut
+    g2d.font = '500 11px "Geist Mono", monospace';
+    g2d.textAlign = 'right'; g2d.textBaseline = 'middle';
+    strings.forEach((s) => { g2d.fillStyle = s.bowing ? sky : (dark ? 'rgba(186,214,235,.6)' : 'rgba(62,92,118,.7)'); g2d.fillText(s.name, nutX - 12, s.y); });
+
+    // Strings
+    strings.forEach((s) => {
+      s.t += 1; s.cool -= 1; s.phase += s.omega;
+      const decay = s.bowing ? 1 : Math.exp(-s.t / 60);
+      const amp = s.bowing ? 2.2 + Math.sin(idle * 9) * 0.6 : s.amp * decay;
+      const active = s.bowing || Math.abs(amp) > 0.6;
+      if (!active && s.t > 200) s.stopX = nutX;
+      const breathe = reduceMotion ? 0 : Math.sin(idle * 0.8 + s.i) * 0.6;
+      const x0 = s.stopX, span = bridgeX - x0;
+
+      const wave = () => {
+        g2d.beginPath();
+        const steps = 90;
+        for (let k = 0; k <= steps; k++) {
+          const u = k / steps, x = x0 + span * u;
+          const y = s.y + Math.sin(Math.PI * u) * (amp * Math.cos(s.phase) + breathe);
+          k === 0 ? g2d.moveTo(x, y) : g2d.lineTo(x, y);
+        }
+      };
       const grad = g2d.createLinearGradient(0, 0, W, 0);
       grad.addColorStop(0, 'transparent');
-      grad.addColorStop(0.2, active ? sky : line);
-      grad.addColorStop(0.8, active ? skyLight : line);
+      grad.addColorStop(0.05, steel);
+      grad.addColorStop(0.95, steel);
       grad.addColorStop(1, 'transparent');
-      g2d.strokeStyle = grad;
-      g2d.lineWidth = 1 + (5 - s.i) * 0.18 + (active ? 0.8 : 0);
+      // stopped part (scroll → finger) and tail (bridge → end) stay still, in steel
+      g2d.strokeStyle = grad; g2d.lineWidth = s.width;
+      g2d.beginPath(); g2d.moveTo(0, s.y); g2d.lineTo(x0, s.y); g2d.moveTo(bridgeX, s.y); g2d.lineTo(W, s.y); g2d.stroke();
+      // vibrating length (finger → bridge)
+      wave();
+      g2d.strokeStyle = active ? sky : grad;
+      g2d.lineWidth = s.width + (active ? 0.4 : 0);
       g2d.shadowColor = active ? sky : 'transparent';
-      g2d.shadowBlur = active ? 14 * decay : 0;
+      g2d.shadowBlur = active ? 6 * Math.min(1, Math.abs(amp) / 8 + 0.3) : 0;
       g2d.stroke();
+      g2d.shadowBlur = 0;
+      // metallic highlight / winding on the thicker strings
+      g2d.beginPath(); g2d.moveTo(0, s.y); g2d.lineTo(x0, s.y); wave();
+      g2d.strokeStyle = shine; g2d.lineWidth = Math.max(0.5, s.width * 0.3);
+      if (s.width > 2) g2d.setLineDash([1.2, 1.6]);
+      g2d.stroke(); g2d.setLineDash([]);
+      g2d.beginPath(); g2d.moveTo(0, s.y); g2d.lineTo(x0, s.y); g2d.moveTo(bridgeX, s.y); g2d.lineTo(W, s.y);
+      g2d.strokeStyle = shine; if (s.width > 2) g2d.setLineDash([1.2, 1.6]); g2d.stroke(); g2d.setLineDash([]);
+
+      // fingertip
+      if (active && x0 > nutX + 1) {
+        g2d.fillStyle = sky;
+        g2d.globalAlpha = s.bowing ? 0.9 : Math.min(0.9, decay + 0.1);
+        g2d.beginPath(); g2d.arc(x0, s.y, 5.5, 0, Math.PI * 2); g2d.fill();
+        g2d.globalAlpha = 0.25;
+        g2d.beginPath(); g2d.arc(x0, s.y, 11, 0, Math.PI * 2); g2d.fill();
+        g2d.globalAlpha = 1;
+      }
     });
-    g2d.shadowBlur = 0;
+
+    // Floating note names
+    g2d.textAlign = 'center'; g2d.textBaseline = 'alphabetic';
+    g2d.font = '600 13px "Geist Mono", monospace';
+    for (let i = labels.length - 1; i >= 0; i--) {
+      const l = labels[i]; l.t += 1;
+      const a = 1 - l.t / 70;
+      if (a <= 0) { labels.splice(i, 1); continue; }
+      g2d.globalAlpha = a;
+      g2d.fillStyle = skyLight && dark ? skyLight : css('--sky-deep');
+      g2d.fillText(l.text, l.x, l.y - 14 - l.t * 0.4);
+    }
+    g2d.globalAlpha = 1;
   };
   frame();
 
