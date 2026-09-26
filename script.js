@@ -85,7 +85,7 @@
   /* ---------- Typing role ---------- */
   function typeLoop() {
     const typed = $('typed');
-    const phrases = ['PhD Researcher · Human–AI Interaction', 'Building LLM agents that collaborate', 'Cellist · Guitarist · Flute & Whistle', 'Classical, Celtic, Spanish & South American'];
+    const phrases = ['PhD Researcher · Human–AI Interaction', 'Building LLM agents that collaborate', 'Cellist first · also guitar, flute & whistle', 'Classical, Celtic, Spanish, South American & Bossa Nova'];
     if (reduceMotion) { typed.textContent = phrases[0]; return; }
     let p = 0, c = 0, deleting = false;
     const tick = () => {
