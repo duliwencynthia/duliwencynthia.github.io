@@ -169,9 +169,68 @@
       master.connect(comp); comp.connect(analyser); analyser.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume();
+    loadSamples();
     return ctx;
   };
   const freq = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
+
+  /* ---------- Cello samples (FluidR3 GM, MIT) ---------- */
+  // Recorded cello notes every whole step from C2 to B♭6; in-between pitches are resampled.
+  const SAMPLE_MIDIS = [];
+  for (let m = 36; m <= 94; m += 2) SAMPLE_MIDIS.push(m);
+  const midisFor = (kind) => (kind === 'pizz' ? SAMPLE_MIDIS.filter((m) => m <= 92) : SAMPLE_MIDIS); // no usable B♭6 pizz
+  const banks = { arco: new Map(), pizz: new Map() };
+  const raw = { arco: new Map(), pizz: new Map() };
+  let fetchStarted = false, decodePromise = null;
+  const prefetchSamples = () => {
+    if (fetchStarted) return;
+    fetchStarted = true;
+    ['arco', 'pizz'].forEach((kind) => midisFor(kind).forEach((m) => {
+      raw[kind].set(m, fetch(`audio/cello-${kind}/${m}.mp3`).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
+    }));
+  };
+  const loadSamples = () => {
+    if (decodePromise) return decodePromise;
+    prefetchSamples();
+    decodePromise = Promise.all(['arco', 'pizz'].flatMap((kind) => midisFor(kind).map(async (m) => {
+      const ab = await raw[kind].get(m);
+      if (!ab) return;
+      try {
+        const buf = await new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
+        if (kind === 'arco') buf.loop = findLoop(buf);
+        banks[kind].set(m, buf);
+      } catch (e) {}
+    })));
+    return decodePromise;
+  };
+  // Loop points on upward zero crossings inside the steady part of the bowed note
+  const findLoop = (buf) => {
+    const d = buf.getChannelData(0), sr = buf.sampleRate;
+    const zc = (from) => { for (let i = Math.floor(from * sr); i < d.length - 1; i++) if (d[i] <= 0 && d[i + 1] > 0) return i / sr; return from; };
+    const start = zc(0.9), end = zc(Math.min(buf.duration - 0.25, 2.85));
+    return { start, end };
+  };
+  const nearest = (bank, midi) => {
+    let best = null, bd = Infinity;
+    bank.forEach((buf, m) => { const d = Math.abs(m - midi); if (d < bd) { bd = d; best = [m, buf]; } });
+    return best;
+  };
+  const toMidi = (hz) => 69 + 12 * Math.log2(hz / 440);
+
+  // One sampled note; returns handles so a bowed note can glide and be released.
+  const sampleVoice = (kind, hz, t, { vol = 1, loop = false } = {}) => {
+    const hit = nearest(banks[kind], toMidi(hz));
+    if (!hit) return null;
+    const [base, buf] = hit;
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    src.playbackRate.value = hz / freq(base);
+    if (loop && buf.loop) { src.loop = true; src.loopStart = buf.loop.start; src.loopEnd = buf.loop.end; }
+    const g = ctx.createGain(); g.gain.value = vol;
+    src.connect(g); g.connect(master);
+    src.start(t);
+    return { src, g, base };
+  };
+  window.addEventListener('load', () => (window.requestIdleCallback || setTimeout)(prefetchSamples, 1200));
 
   // Karplus–Strong plucked string
   const pluck = (midi, t, dur = 1.6, vol = 0.6) => {
@@ -215,7 +274,12 @@
   const TUNES = {
     // Bach Cello Suite No. 1 Prelude, opening bar
     cello: { bpm: 150, notes: [[43,1],[50,1],[59,1],[57,1],[59,1],[50,1],[59,1],[50,1],[43,1],[50,1],[59,1],[57,1],[59,1],[50,1],[59,1],[50,3]],
-      play: (m, t, d) => voice(m, t, d * 0.98, { type: 'sawtooth', cutoff: 1100, attack: 0.06, vib: 5.2, vibDepth: 2.5, vol: 0.28 }) },
+      play: (m, t, d) => {
+        const v = sampleVoice('arco', freq(m), t, { vol: 2.6, loop: true });
+        if (!v) return voice(m, t, d * 0.98, { type: 'sawtooth', cutoff: 1100, attack: 0.06, vib: 5.2, vibDepth: 2.5, vol: 0.28 });
+        v.g.gain.setValueAtTime(0.0001, t); v.g.gain.exponentialRampToValueAtTime(2.6, t + 0.04);
+        v.g.gain.setTargetAtTime(0.0001, t + d * 0.96, 0.05); v.src.stop(t + d + 0.4);
+      } },
     // Andalusian / Phrygian flavor
     guitar: { bpm: 200, notes: [[40,1],[47,1],[52,1],[55,1],[59,1],[64,1],[65,2],[64,1],[62,1],[60,1],[59,1],[57,1],[52,1],[53,2],[52,4]],
       play: (m, t) => pluck(m, t, 1.8, 0.55) },
@@ -229,8 +293,9 @@
 
   const nowPlaying = $('nowPlaying');
   let playingBtn = null, playTimer = null;
-  document.querySelectorAll('.inst').forEach((btn) => btn.addEventListener('click', () => {
+  document.querySelectorAll('.inst').forEach((btn) => btn.addEventListener('click', async () => {
     if (!ensureAudio()) return;
+    if (btn.dataset.inst === 'cello') { nowPlaying.textContent = 'loading cello…'; await loadSamples(); }
     const tune = TUNES[btn.dataset.inst];
     const beat = 60 / tune.bpm;
     let t = ctx.currentTime + 0.05, total = 0;
@@ -296,6 +361,7 @@
 
   // Pizzicato: Karplus–Strong with a darker, longer cello decay
   const pizz = (hz, vol = 0.5) => {
+    if (sampleVoice('pizz', hz, ctx.currentTime, { vol: 1.9 })) return;
     const sr = ctx.sampleRate, len = Math.floor(sr * 2.2), period = Math.max(2, Math.round(sr / hz));
     const buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
     for (let i = 0; i < period; i++) d[i] = Math.random() * 2 - 1;
@@ -325,39 +391,51 @@
     if (!ensureAudio()) return;
     const hz = freq(s.open + semisAt(x));
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = hz;
-    const osc2 = ctx.createOscillator(); osc2.type = 'sawtooth'; osc2.frequency.value = hz; osc2.detune.value = 6;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.3;
-    const lfoG = ctx.createGain(); lfoG.gain.setValueAtTime(0, now); lfoG.gain.linearRampToValueAtTime(hz * 0.006, now + 0.5);
-    lfo.connect(lfoG); lfoG.connect(osc.frequency); lfoG.connect(osc2.frequency);
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300; lp.Q.value = 0.8;
-    const body = ctx.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 250; body.gain.value = 5;
-    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.2, now + 0.12);
-    osc.connect(lp); osc2.connect(lp); lp.connect(body); body.connect(g); g.connect(master);
-    osc.start(now); osc2.start(now); lfo.start(now);
-    bow = { s, osc, osc2, lfo, lfoG, g, lastNote: null };
+    const v = sampleVoice('arco', hz, now, { vol: 0.0001, loop: true });
+    if (v) {
+      v.g.gain.setValueAtTime(0.0001, now);
+      v.g.gain.exponentialRampToValueAtTime(2.4, now + 0.09);
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 5.4;
+      const lfoG = ctx.createGain(); lfoG.gain.setValueAtTime(0, now);
+      lfoG.gain.linearRampToValueAtTime(0.006 * v.src.playbackRate.value, now + 0.6);
+      lfo.connect(lfoG); lfoG.connect(v.src.playbackRate); lfo.start(now);
+      bow = { s, kind: 'sample', v, lfo, lfoG, lastNote: null };
+    } else {
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = hz;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.2, now + 0.12);
+      osc.connect(lp); lp.connect(g); g.connect(master); osc.start(now);
+      bow = { s, kind: 'synth', osc, g, lastNote: null };
+    }
     s.bowing = true;
     moveBow(x);
   };
   const moveBow = (x) => {
     if (!bow) return;
     const s = bow.s, semis = semisAt(x), hz = freq(s.open + semis), now = ctx.currentTime;
-    bow.osc.frequency.setTargetAtTime(hz, now, 0.025);
-    bow.osc2.frequency.setTargetAtTime(hz, now, 0.025);
-    bow.lfoG.gain.setTargetAtTime(hz * 0.006, now, 0.2);
+    if (bow.kind === 'sample') {
+      const rate = hz / freq(bow.v.base);
+      bow.v.src.playbackRate.setTargetAtTime(rate, now, 0.03);
+      bow.lfoG.gain.setTargetAtTime(0.006 * rate, now, 0.2);
+    } else {
+      bow.osc.frequency.setTargetAtTime(hz, now, 0.025);
+    }
     s.stopX = semis === 0 ? nutX : Math.min(x, xAt(MAX_SEMIS));
     s.omega = visOmega(hz);
-    const nearest = s.open + Math.round(semis);
-    if (nearest !== bow.lastNote) {
-      bow.lastNote = nearest;
-      addLabel(semis === 0 ? (nutX + bridgeX) / 2 : s.stopX, s.y, noteName(nearest));
+    const nearestNote = s.open + Math.round(semis);
+    if (nearestNote !== bow.lastNote) {
+      bow.lastNote = nearestNote;
+      addLabel(semis === 0 ? (nutX + bridgeX) / 2 : s.stopX, s.y, noteName(nearestNote));
     }
   };
   const stopBow = () => {
     if (!bow) return;
     const now = ctx.currentTime, b = bow;
-    b.g.gain.setTargetAtTime(0.0001, now, 0.09);
-    [b.osc, b.osc2, b.lfo].forEach((o) => o.stop(now + 0.6));
+    const g = b.kind === 'sample' ? b.v.g : b.g;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
+    g.gain.setTargetAtTime(0.0001, now, 0.12);
+    if (b.kind === 'sample') { b.v.src.stop(now + 0.8); b.lfo.stop(now + 0.8); } else b.osc.stop(now + 0.8);
     b.s.bowing = false; b.s.t = 0; b.s.amp = 3;
     bow = null;
   };
