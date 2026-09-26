@@ -3,78 +3,128 @@
   const finePointer = window.matchMedia('(pointer: fine)').matches;
   const root = document.documentElement;
   const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+  const $ = (id) => document.getElementById(id);
 
-  document.getElementById('year').textContent = new Date().getFullYear();
+  $('year').textContent = new Date().getFullYear();
+
+  /* ---------- Boot sequence ---------- */
+  const boot = $('boot');
+  const alreadyBooted = root.classList.contains('booted');
+  const startTyping = () => typeLoop();
+  if (alreadyBooted || reduceMotion) {
+    boot.classList.add('done');
+    startTyping();
+  } else {
+    const msgs = ['mounting kernel modules', 'loading llm weights', 'tuning cello strings', 'warming up the whistle', 'ready'];
+    let pct = 0;
+    const step = () => {
+      pct = Math.min(100, pct + Math.random() * 9 + 3);
+      const idx = Math.min(msgs.length - 1, Math.floor(pct / 20));
+      $('bootPct').textContent = Math.floor(pct) + '%';
+      $('bootBar').style.width = pct + '%';
+      $('bootStep').textContent = String(idx + 1).padStart(2, '0');
+      $('bootMsg').textContent = msgs[idx];
+      if (pct < 100) setTimeout(step, 55);
+      else setTimeout(() => {
+        boot.classList.add('done');
+        try { sessionStorage.setItem('booted', '1'); } catch (e) {}
+        startTyping();
+      }, 350);
+    };
+    step();
+  }
 
   /* ---------- Theme ---------- */
-  document.getElementById('themeToggle').addEventListener('click', () => {
-    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+  $('themeToggle').addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
     root.dataset.theme = next;
     try { localStorage.setItem('theme', next); } catch (e) {}
   });
 
-  /* ---------- Nav: hide on scroll down, mobile menu, current section ---------- */
-  const nav = document.getElementById('nav');
-  const menu = document.getElementById('menu');
-  const burger = document.getElementById('burger');
+  /* ---------- Nav, breadcrumb, mobile terminal menu ---------- */
+  const nav = $('nav');
+  const termMenu = $('termMenu');
+  const burger = $('burger');
   let lastY = window.scrollY;
   window.addEventListener('scroll', () => {
     const y = window.scrollY;
-    nav.classList.toggle('scrolled', y > 20);
-    nav.classList.toggle('hidden', y > lastY && y > 300 && !menu.classList.contains('open'));
+    nav.classList.toggle('hidden', y > lastY && y > 400);
     lastY = y;
   }, { passive: true });
-  burger.addEventListener('click', () => {
-    const open = menu.classList.toggle('open');
+
+  const setMenu = (open) => {
+    termMenu.classList.toggle('open', open);
+    termMenu.setAttribute('aria-hidden', !open);
     burger.setAttribute('aria-expanded', open);
-    burger.textContent = open ? '✕' : '☰';
-  });
-  menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
-    menu.classList.remove('open'); burger.textContent = '☰'; burger.setAttribute('aria-expanded', false);
-  }));
-  const navLinks = [...menu.querySelectorAll('a')];
+    document.body.style.overflow = open ? 'hidden' : '';
+  };
+  burger.addEventListener('click', () => setMenu(true));
+  $('closeMenu').addEventListener('click', () => setMenu(false));
+  termMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+  const navLinks = [...document.querySelectorAll('#menu a[href^="#"]')];
+  const crumb = $('crumbPath');
+  const names = { top: '~', about: '~/about-me', research: '~/research', experience: '~/experience', projects: '~/projects', music: '~/music', contact: '~/contact-me' };
   const sectionObs = new IntersectionObserver((entries) => {
     entries.forEach((e) => {
-      if (e.isIntersecting) navLinks.forEach((a) => a.classList.toggle('current', a.getAttribute('href') === '#' + e.target.id));
+      if (!e.isIntersecting) return;
+      const id = e.target.id;
+      crumb.textContent = names[id] || '~';
+      navLinks.forEach((a) => a.classList.toggle('current', a.getAttribute('href') === '#' + id));
     });
   }, { rootMargin: '-45% 0px -50% 0px' });
-  document.querySelectorAll('main section[id]').forEach((s) => sectionObs.observe(s));
-
-  /* ---------- Spotlight ---------- */
-  if (finePointer) {
-    window.addEventListener('pointermove', (e) => {
-      root.style.setProperty('--mx', e.clientX + 'px');
-      root.style.setProperty('--my', e.clientY + 'px');
-    }, { passive: true });
-  }
+  document.querySelectorAll('section[id]').forEach((s) => sectionObs.observe(s));
 
   /* ---------- Reveal on scroll ---------- */
   const revealObs = new IntersectionObserver((entries) => {
     entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); revealObs.unobserve(e.target); } });
   }, { threshold: 0.12 });
-  document.querySelectorAll('.reveal').forEach((el, i) => {
-    if (el.closest('.hero')) el.style.transitionDelay = (i * 0.1) + 's';
-    revealObs.observe(el);
-  });
+  document.querySelectorAll('.reveal').forEach((el) => revealObs.observe(el));
 
-  /* ---------- Typing effect ---------- */
-  const typed = document.getElementById('typed');
-  const phrases = ['LLM agents that collaborate.', 'polite, context-aware AI teammates.', 'human–AI studies.', 'full-stack systems.', 'Celtic tunes on a tin whistle.', 'Bach on the cello.'];
-  if (reduceMotion) {
-    typed.textContent = phrases[0];
-  } else {
+  /* ---------- Typing role ---------- */
+  function typeLoop() {
+    const typed = $('typed');
+    const phrases = ['PhD Researcher · Human–AI Interaction', 'Building LLM agents that collaborate', 'Cellist · Guitarist · Flute & Whistle', 'Classical, Celtic, Spanish & South American'];
+    if (reduceMotion) { typed.textContent = phrases[0]; return; }
     let p = 0, c = 0, deleting = false;
     const tick = () => {
       const word = phrases[p];
       c += deleting ? -1 : 1;
       typed.textContent = word.slice(0, c);
-      let delay = deleting ? 35 : 70;
-      if (!deleting && c === word.length) { deleting = true; delay = 1800; }
-      else if (deleting && c === 0) { deleting = false; p = (p + 1) % phrases.length; delay = 350; }
+      let delay = deleting ? 28 : 60;
+      if (!deleting && c === word.length) { deleting = true; delay = 1900; }
+      else if (deleting && c === 0) { deleting = false; p = (p + 1) % phrases.length; delay = 300; }
       setTimeout(tick, delay);
     };
     tick();
   }
+
+  /* ---------- Hero: fly-through on scroll + floating pill parallax ---------- */
+  const hero = document.querySelector('.hero');
+  const heroInner = $('heroInner');
+  const pills = [...document.querySelectorAll('.floaters .float-pill')];
+  let mouse = { x: 0, y: 0 };
+  if (finePointer) {
+    window.addEventListener('pointermove', (e) => {
+      mouse.x = e.clientX / window.innerWidth - 0.5;
+      mouse.y = e.clientY / window.innerHeight - 0.5;
+    }, { passive: true });
+  }
+  const updateHero = () => {
+    if (reduceMotion) return;
+    const p = Math.min(1, Math.max(0, window.scrollY / (hero.offsetHeight * 0.75)));
+    heroInner.style.transform = `translateY(${p * -60}px) scale(${1 + p * 0.35})`;
+    heroInner.style.opacity = String(Math.max(0, 1 - p * 1.4));
+    pills.forEach((el, i) => {
+      const dx = parseFloat(el.dataset.dx), dy = parseFloat(el.dataset.dy);
+      const depth = 14 + (i % 3) * 10;
+      const fx = dx * p * 420 + mouse.x * depth * dx * -1;
+      const fy = dy * p * 260 + mouse.y * depth;
+      el.style.transform = `translate(${fx}px, ${fy}px) scale(${1 + p * 0.5})`;
+      el.style.opacity = String(Math.max(0, 1 - p * 1.3));
+    });
+  };
 
   /* ---------- Card tilt ---------- */
   if (finePointer && !reduceMotion) {
@@ -83,7 +133,7 @@
         const r = el.getBoundingClientRect();
         const x = (e.clientX - r.left) / r.width - 0.5;
         const y = (e.clientY - r.top) / r.height - 0.5;
-        el.style.transform = `perspective(900px) rotateX(${-y * 5}deg) rotateY(${x * 5}deg) translateY(-4px)`;
+        el.style.transform = `perspective(900px) rotateX(${-y * 4}deg) rotateY(${x * 4}deg) translateY(-4px)`;
       });
       el.addEventListener('pointerleave', () => { el.style.transform = ''; });
     });
@@ -177,6 +227,7 @@
       play: (m, t, d) => voice(m, t, d * 0.9, { type: 'triangle', cutoff: 6000, attack: 0.02, vib: 6, vibDepth: 5, vol: 0.3, breath: 0.08 }) },
   };
 
+  const nowPlaying = $('nowPlaying');
   let playingBtn = null, playTimer = null;
   document.querySelectorAll('.inst').forEach((btn) => btn.addEventListener('click', () => {
     if (!ensureAudio()) return;
@@ -187,10 +238,11 @@
     if (playingBtn) playingBtn.classList.remove('playing');
     clearTimeout(playTimer);
     btn.classList.add('playing'); playingBtn = btn;
-    playTimer = setTimeout(() => btn.classList.remove('playing'), (total + 0.8) * 1000);
+    nowPlaying.textContent = btn.dataset.label;
+    playTimer = setTimeout(() => { btn.classList.remove('playing'); nowPlaying.textContent = '—'; }, (total + 0.8) * 1000);
   }));
 
-  const soundBtn = document.getElementById('soundToggle');
+  const soundBtn = $('soundToggle');
   soundBtn.addEventListener('click', () => {
     soundOn = !soundOn;
     soundBtn.setAttribute('aria-pressed', soundOn);
@@ -198,9 +250,8 @@
   });
 
   /* ---------- Hero: pluckable strings ---------- */
-  const canvas = document.getElementById('strings');
+  const canvas = $('strings');
   const g2d = canvas.getContext('2d');
-  const hero = document.querySelector('.hero');
   const STRING_NOTES = [64, 59, 55, 50, 45, 40]; // guitar standard tuning, high → low
   let W = 0, H = 0, dpr = 1;
   const strings = STRING_NOTES.map((note, i) => ({ note, i, y: 0, amp: 0, x0: 0.5, t: 0, cool: 0 }));
@@ -210,7 +261,7 @@
     W = hero.clientWidth; H = hero.clientHeight;
     canvas.width = W * dpr; canvas.height = H * dpr;
     g2d.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const top = H * 0.16, span = H * 0.74;
+    const top = H * 0.2, span = H * 0.62;
     strings.forEach((s, i) => { s.y = top + span * (i / (strings.length - 1)); });
   };
   resize();
@@ -222,7 +273,7 @@
       const dy = y - prev.y, speed = Math.hypot(x - prev.x, dy);
       strings.forEach((s) => {
         if ((prev.y - s.y) * (y - s.y) <= 0 && prev.y !== y && s.cool <= 0) {
-          s.amp = Math.min(28, 6 + speed * 0.6) * Math.sign(dy || 1);
+          s.amp = Math.min(26, 6 + speed * 0.6) * Math.sign(dy || 1);
           s.x0 = Math.min(0.95, Math.max(0.05, x / W));
           s.t = 0; s.cool = 6;
           if (soundOn && ctx) pluck(s.note, ctx.currentTime + 0.005, 2, 0.35);
@@ -246,20 +297,19 @@
   new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; }).observe(hero);
 
   let idle = 0;
-  const drawStrings = () => {
-    requestAnimationFrame(drawStrings);
+  const frame = () => {
+    requestAnimationFrame(frame);
     if (!heroVisible) return;
+    updateHero();
     idle += 0.016;
     g2d.clearRect(0, 0, W, H);
-    const accent = css('--accent'), accent2 = css('--accent-2'), line = css('--line');
+    const sky = css('--sky'), skyLight = css('--sky-light'), line = css('--string');
     strings.forEach((s) => {
       s.t += 1; s.cool -= 1;
       const decay = Math.exp(-s.t / 55);
-      const osc = Math.cos(s.t * (0.55 + s.i * 0.05));
-      const a = s.amp * decay * osc;
+      const a = s.amp * decay * Math.cos(s.t * (0.55 + s.i * 0.05));
       const active = Math.abs(s.amp * decay) > 0.6;
       const breathe = reduceMotion ? 0 : Math.sin(idle * 0.8 + s.i) * 1.2;
-
       g2d.beginPath();
       const steps = 80, x0 = s.x0 * W;
       for (let k = 0; k <= steps; k++) {
@@ -270,21 +320,21 @@
       }
       const grad = g2d.createLinearGradient(0, 0, W, 0);
       grad.addColorStop(0, 'transparent');
-      grad.addColorStop(0.2, active ? accent : line);
-      grad.addColorStop(0.8, active ? accent2 : line);
+      grad.addColorStop(0.2, active ? sky : line);
+      grad.addColorStop(0.8, active ? skyLight : line);
       grad.addColorStop(1, 'transparent');
       g2d.strokeStyle = grad;
-      g2d.lineWidth = 1 + (5 - s.i) * 0.15 + (active ? 0.8 : 0);
-      g2d.shadowColor = active ? accent : 'transparent';
+      g2d.lineWidth = 1 + (5 - s.i) * 0.18 + (active ? 0.8 : 0);
+      g2d.shadowColor = active ? sky : 'transparent';
       g2d.shadowBlur = active ? 14 * decay : 0;
       g2d.stroke();
     });
     g2d.shadowBlur = 0;
   };
-  drawStrings();
+  frame();
 
   /* ---------- Music visualizer ---------- */
-  const vis = document.getElementById('visualizer');
+  const vis = $('visualizer');
   const v2d = vis.getContext('2d');
   let VW = 0, VH = 0;
   const resizeVis = () => {
@@ -296,27 +346,28 @@
   resizeVis();
   window.addEventListener('resize', resizeVis);
   let visVisible = false;
-  new IntersectionObserver(([e]) => { visVisible = e.isIntersecting; }).observe(vis);
-  let freqData = new Uint8Array(128), vt = 0;
+  new IntersectionObserver(([e]) => { visVisible = e.isIntersecting; if (visVisible) resizeVis(); }).observe(vis);
+  const freqData = new Uint8Array(128);
+  let vt = 0;
   const drawVis = () => {
     requestAnimationFrame(drawVis);
     if (!visVisible) return;
     vt += 0.02;
     v2d.clearRect(0, 0, VW, VH);
-    const bars = Math.max(24, Math.floor(VW / 14));
+    const bars = Math.max(24, Math.floor(VW / 12));
     if (analyser) analyser.getByteFrequencyData(freqData);
     const grad = v2d.createLinearGradient(0, VH, 0, 0);
-    grad.addColorStop(0, css('--accent')); grad.addColorStop(1, css('--accent-2'));
+    grad.addColorStop(0, css('--sky-deep')); grad.addColorStop(1, css('--sky-light'));
     v2d.fillStyle = grad;
     const bw = VW / bars;
     for (let i = 0; i < bars; i++) {
       const live = analyser ? freqData[Math.floor((i / bars) * 90)] / 255 : 0;
       const idleH = reduceMotion ? 0.06 : 0.05 + 0.04 * (1 + Math.sin(vt * 2 + i * 0.35));
-      const h = Math.max(idleH, live) * (VH - 16);
+      const h = Math.max(idleH, live) * (VH - 4);
       const x = i * bw + bw * 0.2, w = bw * 0.6;
       v2d.globalAlpha = 0.35 + 0.65 * Math.min(1, live * 1.5 + 0.2);
       v2d.beginPath();
-      if (v2d.roundRect) v2d.roundRect(x, VH - 8 - h, w, h, 3); else v2d.rect(x, VH - 8 - h, w, h);
+      if (v2d.roundRect) v2d.roundRect(x, VH - h, w, h, 3); else v2d.rect(x, VH - h, w, h);
       v2d.fill();
     }
     v2d.globalAlpha = 1;

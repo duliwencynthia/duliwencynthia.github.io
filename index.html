@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,62 +7,108 @@
   <meta name="description" content="Liwen (Cynthia) Du — PhD student in Computer Science at NC State, researching human–LLM collaboration. Also a cellist, guitarist, and flute & whistle player." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎻</text></svg>" />
   <script>
     try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+    try { if (sessionStorage.getItem('booted')) document.documentElement.classList.add('booted'); } catch (e) {}
   </script>
 </head>
 <body>
-  <div class="spotlight" aria-hidden="true"></div>
+  <!-- Boot loader -->
+  <div class="boot" id="boot" aria-hidden="true">
+    <div class="boot-inner">
+      <p class="mono boot-top"><span>/sys · boot</span><span id="bootPct">0%</span></p>
+      <p class="boot-hello">Hello<span class="accent">.</span></p>
+      <p class="mono boot-line"><span id="bootStep">01</span> / 05 — <span id="bootMsg">mounting kernel modules</span><span class="caret">_</span></p>
+      <div class="boot-bar"><span id="bootBar"></span></div>
+    </div>
+  </div>
+
+  <div class="blobs" aria-hidden="true"><span></span><span></span><span></span></div>
 
   <header class="nav" id="nav">
-    <a class="brand" href="#top"><span class="brand-mark">LD</span></a>
-    <nav id="menu">
-      <a href="#about"><span class="num">01.</span> About</a>
-      <a href="#research"><span class="num">02.</span> Research</a>
-      <a href="#experience"><span class="num">03.</span> Experience</a>
-      <a href="#projects"><span class="num">04.</span> Projects</a>
-      <a href="#music"><span class="num">05.</span> Music</a>
-      <a href="#contact"><span class="num">06.</span> Contact</a>
-    </nav>
-    <div class="nav-actions">
-      <button class="icon-btn" id="soundToggle" aria-pressed="false" title="Sound on/off">
-        <span class="sound-off">🔇</span><span class="sound-on">🔊</span>
-      </button>
-      <button class="icon-btn" id="themeToggle" title="Toggle light/dark">
-        <span class="moon">☾</span><span class="sun">☀</span>
-      </button>
-      <button class="icon-btn burger" id="burger" aria-label="Menu" aria-expanded="false">☰</button>
+    <div class="nav-row">
+      <a class="brand mono" href="#top">liwen</a>
+      <nav class="links-bracket mono" id="menu">
+        <a href="#top">hello</a>
+        <a href="#about">about-me</a>
+        <a href="#research">research</a>
+        <a href="#experience">experience</a>
+        <a href="#projects">projects</a>
+        <a href="#music">music</a>
+        <a href="https://github.com/duliwencynthia" target="_blank" rel="noopener">github</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="round-btn" id="soundToggle" aria-pressed="false" title="Sound on/off">
+          <span class="sound-off">🔇</span><span class="sound-on">🔊</span>
+        </button>
+        <button class="round-btn" id="themeToggle" title="Toggle light/dark">
+          <span class="moon">☾</span><span class="sun">☀</span>
+        </button>
+        <a class="pill-btn mono" href="#contact">contact-me</a>
+        <button class="menu-btn mono" id="burger" aria-expanded="false"><span class="br">[</span> menu <span class="br">]</span></button>
+      </div>
+    </div>
+    <div class="crumb mono">
+      <span><span class="ok">➜</span> <span id="crumbPath">~</span> <span class="git">git:(<span class="branch">main</span>)</span></span>
+      <span class="crumb-right">♪ tuned · EADGBE</span>
     </div>
   </header>
+
+  <!-- Mobile terminal menu -->
+  <div class="term-menu" id="termMenu" aria-hidden="true">
+    <div class="term-head mono"><span>liwen</span><button id="closeMenu" class="mono"><span class="br">[</span> x <span class="br">]</span> close</button></div>
+    <p class="mono muted">$ ls ./nav</p>
+    <nav class="mono">
+      <a href="#top"><span class="accent">→</span> hello</a>
+      <a href="#about"><span class="accent">→</span> about-me</a>
+      <a href="#research"><span class="accent">→</span> research</a>
+      <a href="#experience"><span class="accent">→</span> experience</a>
+      <a href="#projects"><span class="accent">→</span> projects</a>
+      <a href="#music"><span class="accent">→</span> music</a>
+      <a href="#contact"><span class="accent">→</span> contact-me</a>
+    </nav>
+  </div>
 
   <!-- Hero -->
   <section class="hero" id="top">
     <canvas id="strings" aria-hidden="true"></canvas>
-    <div class="hero-inner">
-      <p class="mono accent reveal">Hi, my name is</p>
-      <h1 class="reveal">Liwen <span class="grad">(Cynthia)</span> Du.</h1>
-      <h2 class="hero-sub reveal">I build <span id="typed" class="typed"></span><span class="caret">|</span></h2>
-      <p class="lede reveal">
-        PhD student in Computer Science at NC State. I study how LLM agents can be good teammates
-        to people, not just answer their questions. Off the keyboard, I play cello, guitar, flute, and tin whistle.
-      </p>
-      <div class="links reveal">
-        <a class="btn primary" href="#research">See my research</a>
-        <a class="btn" href="#music">Hear the music ♪</a>
-      </div>
-      <p class="hint mono reveal">↕ Move your cursor across the strings to play them. Turn on 🔊 to hear them.</p>
+    <div class="floaters" aria-hidden="true">
+      <span class="float-pill p1" data-dx="-1" data-dy="-1">LLM Agents · Dialogue</span>
+      <span class="float-pill p2 sky" data-dx="1" data-dy="-1">Human–AI Teams</span>
+      <span class="float-pill p3 sky" data-dx="-1" data-dy="1">Cello · Bach 🎻</span>
+      <span class="float-pill p4" data-dx="1" data-dy="1">Celtic Whistle ☘</span>
+      <span class="float-pill p5 sky" data-dx="-1.2" data-dy="0">User Studies</span>
+      <span class="float-pill p6" data-dx="1.2" data-dy="0.2">NLP · RoBERTa</span>
     </div>
+    <div class="hero-inner" id="heroInner">
+      <p class="mono kicker">PHD STUDENT · NC STATE · CS</p>
+      <h1>Liwen<br /><span class="grad">builds in harmony.</span></h1>
+      <p class="mono role">&gt; <span id="typed"></span><span class="caret">|</span></p>
+      <div class="hero-cta">
+        <a class="btn solid" href="#research">Explore Research</a>
+        <a class="btn soft" href="https://github.com/duliwencynthia" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a class="btn soft" href="#music">♪ Hear the Music</a>
+      </div>
+    </div>
+    <a class="scroll-cue mono" href="#about">SCROLL TO FLY THROUGH ↓</a>
+    <p class="hint mono">move across the strings to pluck them · 🔊 for sound</p>
   </section>
 
   <main>
     <!-- About -->
     <section id="about">
-      <h2 class="section-title reveal"><span class="num">01.</span> About me</h2>
+      <div class="sec-head reveal">
+        <p class="mono label">/01 — about-me</p>
+        <h2>A researcher who <span class="grad">listens</span>.</h2>
+      </div>
       <div class="two-col">
-        <div class="reveal">
+        <div class="prose reveal">
           <p>
             I'm a PhD student in Computer Science at <strong>North Carolina State University</strong>, where I
             also earned my Master of Computer Science. My research asks how LLM-based agents can
@@ -73,27 +119,27 @@
             Along the way I've worked on NLP for medical dialogue, machine learning for cyber-threat
             intelligence, empirical software engineering, and full-stack web development.
           </p>
-          <p>Some things I've been working with lately:</p>
-          <ul class="tri-list">
-            <li>LLM agents &amp; prompting</li>
-            <li>Human-subject studies</li>
-            <li>Python · PyTorch · TensorFlow</li>
-            <li>RoBERTa / BERT</li>
-            <li>React · Node.js · Django</li>
-            <li>AWS · MongoDB · MySQL</li>
-          </ul>
+          <div class="term-card mono">
+            <p class="muted">$ cat ./stack.txt</p>
+            <div class="stack">
+              <span>llm-agents</span><span>prompting</span><span>python</span><span>pytorch</span>
+              <span>tensorflow</span><span>roberta</span><span>bert</span><span>react</span>
+              <span>node.js</span><span>django</span><span>aws</span><span>mongodb</span><span>mysql</span>
+              <span>user-studies</span>
+            </div>
+          </div>
         </div>
-        <div class="card edu-card tilt reveal">
-          <h3>Education</h3>
+        <div class="card tilt reveal">
+          <p class="mono label">/education</p>
           <div class="edu">
-            <span class="mono accent small">Aug 2024 – Present</span>
+            <span class="mono sky small">2024 — present</span>
             <strong>PhD, Computer Science</strong>
-            <span class="muted">North Carolina State University</span>
+            <span class="muted">North Carolina State University · Raleigh, NC</span>
           </div>
           <div class="edu">
-            <span class="mono accent small">Aug 2021 – May 2023</span>
+            <span class="mono sky small">2021 — 2023</span>
             <strong>Master of Computer Science</strong>
-            <span class="muted">North Carolina State University</span>
+            <span class="muted">North Carolina State University · Raleigh, NC</span>
           </div>
         </div>
       </div>
@@ -101,11 +147,14 @@
 
     <!-- Research -->
     <section id="research">
-      <h2 class="section-title reveal"><span class="num">02.</span> Research</h2>
+      <div class="sec-head reveal">
+        <p class="mono label">/02 — research</p>
+        <h2>Teaching AI to be a <span class="grad">good teammate</span>.</h2>
+      </div>
 
       <article class="card feature tilt reveal">
         <div class="feature-glow" aria-hidden="true"></div>
-        <p class="mono accent small">Featured · Human–AI Interaction · Jul 2025 – Aug 2026</p>
+        <div class="card-meta mono"><span class="tag">featured</span><span class="muted">jul 2025 — aug 2026</span></div>
         <h3>Beyond Being Nice, Cook Up Collaboration: Context-Aware Politeness for Human–LLM Teams</h3>
         <ul>
           <li>Developed <strong>Plato</strong>, an LLM-based collaborative agent that negotiates plans, coordinates actions, and carries out shared tasks with humans in <em>Overcooked</em>.</li>
@@ -113,58 +162,61 @@
           <li>Built an end-to-end human–LLM interaction system: structured prompting, dialogue management, conversation summarization, game-state feedback, and LLM-generated actions for real-time collaboration.</li>
           <li>Led a human-subject study from start to finish: protocol, counterbalancing, recruitment, sessions, and analysis. Plato was compared against a human Wizard-of-Oz and a non-politeness AI baseline.</li>
         </ul>
-        <div class="chips"><span>LLM Agents</span><span>Dialogue Systems</span><span>Politeness Theory</span><span>User Studies</span></div>
+        <div class="chips mono"><span>llm-agents</span><span>dialogue-systems</span><span>politeness-theory</span><span>user-studies</span></div>
       </article>
 
       <div class="grid">
         <article class="card tilt reveal">
-          <div class="card-top"><span class="folder">⌘</span><span class="mono muted small">Feb – May 2025</span></div>
+          <div class="card-meta mono"><span class="tag">ml · security</span><span class="muted">feb — may 2025</span></div>
           <h3>Advancing Cyberthreat Analysis with MITRE ATT&amp;CK Reports</h3>
           <p>An ML pipeline that classifies cyber threats from MITRE ATT&amp;CK-aligned intelligence reports. It uses SMOTE for class imbalance and Random Projection for efficiency. The fine-tuned RoBERTa model <strong>cut training time by 35%</strong> and made minority-class results more stable.</p>
-          <div class="chips"><span>RoBERTa</span><span>SMOTE</span><span>NLP</span></div>
+          <div class="chips mono"><span>roberta</span><span>smote</span><span>nlp</span></div>
         </article>
         <article class="card tilt reveal">
-          <div class="card-top"><span class="folder">⟲</span><span class="mono muted small">Jun – Dec 2024</span></div>
+          <div class="card-meta mono"><span class="tag">software eng.</span><span class="muted">jun — dec 2024</span></div>
           <h3>Could Refactoring Help with Software Migration?</h3>
           <p>A study of how code smells and refactoring patterns affect large-scale software migration. I tested the hypotheses through structured interviews with professional engineers.</p>
-          <div class="chips"><span>Empirical SE</span><span>Interviews</span><span>Refactoring</span></div>
+          <div class="chips mono"><span>empirical-se</span><span>interviews</span><span>refactoring</span></div>
         </article>
       </div>
     </section>
 
-    <!-- Experience (tabs) -->
+    <!-- Experience -->
     <section id="experience">
-      <h2 class="section-title reveal"><span class="num">03.</span> Where I've worked</h2>
-      <div class="tabs reveal">
-        <div class="tab-list" role="tablist">
-          <button role="tab" class="tab active" aria-selected="true" data-tab="ncsu">NC State</button>
-          <button role="tab" class="tab" aria-selected="false" data-tab="bridxe">BridXe</button>
-          <button role="tab" class="tab" aria-selected="false" data-tab="zju">Zhejiang Univ.</button>
+      <div class="sec-head reveal">
+        <p class="mono label">/03 — experience</p>
+        <h2>Where I've <span class="grad">worked</span>.</h2>
+      </div>
+      <div class="tabs card reveal">
+        <div class="tab-list mono" role="tablist">
+          <button role="tab" class="tab active" aria-selected="true" data-tab="ncsu">nc-state</button>
+          <button role="tab" class="tab" aria-selected="false" data-tab="bridxe">bridxe</button>
+          <button role="tab" class="tab" aria-selected="false" data-tab="zju">zhejiang-univ</button>
           <span class="tab-indicator" aria-hidden="true"></span>
         </div>
         <div class="tab-panels">
           <div class="panel active" id="ncsu" role="tabpanel">
-            <h3>PhD Researcher <span class="accent">@ NC State University</span></h3>
-            <p class="mono muted small">Aug 2024 – Present · Raleigh, NC</p>
-            <ul class="tri-list block">
+            <h3>PhD Researcher <span class="sky">@ NC State University</span></h3>
+            <p class="mono muted small">aug 2024 — present · raleigh, nc</p>
+            <ul class="arrow-list">
               <li>Build LLM agents for real-time human–AI collaboration (Plato, in Overcooked).</li>
               <li>Design and run human-subject studies with counterbalanced protocols.</li>
               <li>Research ML for cyber-threat intelligence and refactoring for software migration.</li>
             </ul>
           </div>
           <div class="panel" id="bridxe" role="tabpanel">
-            <h3>Software Engineer Intern <span class="accent">@ BridXe</span></h3>
-            <p class="mono muted small">May – Aug 2022 · Los Angeles, CA</p>
-            <ul class="tri-list block">
+            <h3>Software Engineer Intern <span class="sky">@ BridXe</span></h3>
+            <p class="mono muted small">may — aug 2022 · los angeles, ca</p>
+            <ul class="arrow-list">
               <li>Built back-end services for a marketplace that handles phygital product resale and supply-chain tracking.</li>
               <li>Designed MongoDB schemas and RESTful Node.js/Express.js APIs for product and brand management.</li>
               <li>Built an NFT analytics module in Python/Django and deployed the full stack on AWS.</li>
             </ul>
           </div>
           <div class="panel" id="zju" role="tabpanel">
-            <h3>Research Assistant Programmer Intern <span class="accent">@ Zhejiang University</span></h3>
-            <p class="mono muted small">Sep 2020 – Jun 2021 · Hangzhou, China</p>
-            <ul class="tri-list block">
+            <h3>Research Assistant Programmer Intern <span class="sky">@ Zhejiang University</span></h3>
+            <p class="mono muted small">sep 2020 — jun 2021 · hangzhou, china</p>
+            <ul class="arrow-list">
               <li>Supported NLP research for an online conversational medical diagnosis system.</li>
               <li>Built medical response generation models with Knowledge Graphs, RNNs, and LSTMs in TensorFlow.</li>
               <li>Collected medical dialogue data with Scrapy and pre-trained with BERT, improving accuracy by 15%.</li>
@@ -176,58 +228,67 @@
 
     <!-- Projects -->
     <section id="projects">
-      <h2 class="section-title reveal"><span class="num">04.</span> Things I've built</h2>
+      <div class="sec-head reveal">
+        <p class="mono label">/04 — projects</p>
+        <h2>Things I've <span class="grad">built</span>.</h2>
+      </div>
       <div class="grid">
         <article class="card tilt reveal">
-          <div class="card-top"><span class="folder">🎬</span><span class="mono muted small">May – Jun 2021</span></div>
-          <h3>FilmLast</h3>
+          <div class="card-meta mono"><span class="tag">full-stack</span><span class="muted">may — jun 2021</span></div>
+          <h3>🎬 FilmLast</h3>
           <p>A movie platform for browsing new, upcoming, and classic films. It uses data scraped from IMDb, a Java Spring back end, a React.js front end, and a Node.js chatbot that helps users find movies. Deployed on AWS.</p>
-          <div class="chips"><span>Java</span><span>Spring</span><span>React.js</span><span>MySQL</span><span>AWS</span></div>
+          <div class="chips mono"><span>java</span><span>spring</span><span>react</span><span>mysql</span><span>aws</span></div>
         </article>
         <article class="card tilt reveal">
-          <div class="card-top"><span class="folder">🎓</span><span class="mono muted small">Oct – Nov 2021</span></div>
-          <h3>Expertiza</h3>
+          <div class="card-meta mono"><span class="tag">open source</span><span class="muted">oct — nov 2021</span></div>
+          <h3>🎓 Expertiza</h3>
           <p>Contributions to the open-source instructor–student platform. I improved review and submission grade trails in Rails, managed MySQL schema updates, wrote RSpec tests, and deployed on Heroku.</p>
-          <div class="chips"><span>Ruby on Rails</span><span>MySQL</span><span>RSpec</span><span>Heroku</span></div>
+          <div class="chips mono"><span>ruby-on-rails</span><span>mysql</span><span>rspec</span><span>heroku</span></div>
         </article>
       </div>
     </section>
 
     <!-- Music -->
     <section id="music">
-      <h2 class="section-title reveal"><span class="num">05.</span> Off-stage… on stage</h2>
+      <div class="sec-head reveal">
+        <p class="mono label">/05 — music</p>
+        <h2>Off the keyboard, <span class="grad">on the fingerboard</span>.</h2>
+      </div>
       <p class="lede reveal">
-        Music is my other language. I play classical repertoire as well as folk traditions from around the world.
-        <strong>Click an instrument</strong> to hear a little phrase. (It's synthesized in your browser, so it's
-        nowhere near as good as the real thing.)
+        I play classical repertoire as well as folk traditions from around the world.
+        <strong>Click an instrument</strong> to hear a short phrase. It's synthesized in your browser, so it's
+        nowhere near as good as the real thing.
       </p>
 
-      <canvas id="visualizer" class="visualizer reveal" aria-hidden="true"></canvas>
+      <div class="card vis-card reveal">
+        <div class="vis-head mono"><span><span class="dot"></span> now playing: <span id="nowPlaying">—</span></span><span class="muted">/dev/audio</span></div>
+        <canvas id="visualizer" class="visualizer" aria-hidden="true"></canvas>
+      </div>
 
       <div class="instruments">
-        <button class="inst tilt reveal" data-inst="cello">
-          <span class="icon">🎻</span><strong>Cello</strong><span class="mono small muted">Bach · Suite No. 1</span>
+        <button class="inst tilt reveal" data-inst="cello" data-label="cello · bach suite no. 1">
+          <span class="icon">🎻</span><strong>Cello</strong><span class="mono small muted">bach · suite no. 1</span>
         </button>
-        <button class="inst tilt reveal" data-inst="guitar">
-          <span class="icon">🎸</span><strong>Guitar</strong><span class="mono small muted">Spanish · Phrygian</span>
+        <button class="inst tilt reveal" data-inst="guitar" data-label="guitar · spanish phrygian">
+          <span class="icon">🎸</span><strong>Guitar</strong><span class="mono small muted">spanish · phrygian</span>
         </button>
-        <button class="inst tilt reveal" data-inst="flute">
-          <span class="icon">🪈</span><strong>Flute</strong><span class="mono small muted">Andean air</span>
+        <button class="inst tilt reveal" data-inst="flute" data-label="flute · andean air">
+          <span class="icon">🪈</span><strong>Flute</strong><span class="mono small muted">andean air</span>
         </button>
-        <button class="inst tilt reveal" data-inst="whistle">
-          <span class="icon">🎶</span><strong>Tin Whistle</strong><span class="mono small muted">Celtic jig</span>
+        <button class="inst tilt reveal" data-inst="whistle" data-label="tin whistle · celtic jig">
+          <span class="icon">☘️</span><strong>Tin Whistle</strong><span class="mono small muted">celtic jig</span>
         </button>
       </div>
 
       <div class="genres reveal">
-        <p class="mono accent small">Genres I play</p>
+        <p class="mono label">$ ls ./genres</p>
         <div class="genre-row">
-          <span class="genre" style="--h:92%">Classical</span>
-          <span class="genre" style="--h:85%">Celtic</span>
-          <span class="genre" style="--h:75%">Spanish</span>
-          <span class="genre" style="--h:70%">South American</span>
-          <span class="genre" style="--h:60%">Rock</span>
-          <span class="genre" style="--h:30%">A little Jazz</span>
+          <span class="float-pill sky">Classical</span>
+          <span class="float-pill">Celtic</span>
+          <span class="float-pill sky">Spanish</span>
+          <span class="float-pill">South American</span>
+          <span class="float-pill sky">Rock</span>
+          <span class="float-pill">a little Jazz</span>
         </div>
       </div>
 
@@ -236,31 +297,45 @@
           <h3>Let's make music 🎼</h3>
           <p class="muted">Need a cellist or guitarist, or someone to bring a whistle to the session? Get in touch.</p>
         </div>
-        <a class="btn primary" href="mailto:duliwe3.25@gmail.com">duliwe3.25@gmail.com</a>
+        <a class="btn solid" href="mailto:duliwe3.25@gmail.com">duliwe3.25@gmail.com</a>
       </div>
     </section>
 
     <!-- Contact -->
     <section id="contact" class="contact">
-      <p class="mono accent reveal"><span class="num">06.</span> What's next?</p>
-      <h2 class="big-title reveal">Get in touch</h2>
+      <p class="mono label reveal">/06 — contact-me</p>
+      <h2 class="big reveal">Let's build<br /><span class="grad">something together.</span></h2>
       <p class="lede center reveal">
-        I'm open to research collaborations, internships, and interesting conversations about human–AI
-        teamwork. For music, use the music email below.
+        I'm open to research collaborations, internships, and conversations about human–AI teamwork.
+        For music, use the music email.
       </p>
-      <div class="links center reveal">
-        <a class="btn primary" href="mailto:ldu2@ncsu.edu">Say hello · ldu2@ncsu.edu</a>
-        <a class="btn" href="mailto:duliwe3.25@gmail.com">Music · duliwe3.25@gmail.com</a>
-      </div>
-      <div class="socials reveal">
-        <a href="https://github.com/duliwencynthia" target="_blank" rel="noopener">GitHub ↗</a>
-        <a href="https://www.linkedin.com/in/liwen-cynthia-du-b739731ab/" target="_blank" rel="noopener">LinkedIn ↗</a>
+      <div class="hero-cta center reveal">
+        <a class="btn solid" href="mailto:ldu2@ncsu.edu">✉ ldu2@ncsu.edu</a>
+        <a class="btn soft" href="mailto:duliwe3.25@gmail.com">♪ duliwe3.25@gmail.com</a>
       </div>
     </section>
   </main>
 
-  <footer>
-    <p class="mono small">Designed &amp; built by Liwen (Cynthia) Du · <span id="year">2026</span></p>
+  <footer class="mono">
+    <p class="eof">/eof</p>
+    <div class="foot-grid">
+      <div>
+        <p class="muted">$ sitemap</p>
+        <a href="#top">→ home</a><a href="#about">→ about</a><a href="#research">→ research</a>
+        <a href="#experience">→ experience</a><a href="#projects">→ projects</a><a href="#music">→ music</a>
+      </div>
+      <div>
+        <p class="muted">$ socials</p>
+        <a href="https://github.com/duliwencynthia" target="_blank" rel="noopener">→ github</a>
+        <a href="https://www.linkedin.com/in/liwen-cynthia-du-b739731ab/" target="_blank" rel="noopener">→ linkedin</a>
+        <a href="mailto:ldu2@ncsu.edu">→ email</a>
+        <a href="mailto:duliwe3.25@gmail.com">→ music email</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="year">2026</span> Liwen (Cynthia) Du · durham, nc</span>
+      <a href="#top">scroll --top ↑</a>
+    </div>
   </footer>
 
   <script src="script.js"></script>
