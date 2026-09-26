@@ -385,40 +385,46 @@
     if (soundOn && ensureAudio()) pizz(freq(midi));
   };
 
-  // Bowing: a sustained voice whose pitch glides with the finger
+  // Bowing: a sustained voice whose pitch glides with the finger.
+  // Visual-only when sound is off or the browser hasn't allowed audio yet.
   let bow = null;
+  const audible = () => soundOn && ctx && ctx.state === 'running';
   const startBow = (s, x) => {
-    if (!ensureAudio()) return;
-    const hz = freq(s.open + semisAt(x));
-    const now = ctx.currentTime;
-    const v = sampleVoice('arco', hz, now, { vol: 0.0001, loop: true });
-    if (v) {
-      v.g.gain.setValueAtTime(0.0001, now);
-      v.g.gain.exponentialRampToValueAtTime(2.4, now + 0.09);
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 5.4;
-      const lfoG = ctx.createGain(); lfoG.gain.setValueAtTime(0, now);
-      lfoG.gain.linearRampToValueAtTime(0.006 * v.src.playbackRate.value, now + 0.6);
-      lfo.connect(lfoG); lfoG.connect(v.src.playbackRate); lfo.start(now);
-      bow = { s, kind: 'sample', v, lfo, lfoG, lastNote: null };
+    if (!audible()) {
+      bow = { s, kind: 'silent', lastNote: null };
     } else {
-      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = hz;
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
-      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.2, now + 0.12);
-      osc.connect(lp); lp.connect(g); g.connect(master); osc.start(now);
-      bow = { s, kind: 'synth', osc, g, lastNote: null };
+      const hz = freq(s.open + semisAt(x));
+      const now = ctx.currentTime;
+      const v = sampleVoice('arco', hz, now, { vol: 0.0001, loop: true });
+      if (v) {
+        v.g.gain.setValueAtTime(0.0001, now);
+        v.g.gain.exponentialRampToValueAtTime(2.4, now + 0.12);
+        const lfo = ctx.createOscillator(); lfo.frequency.value = 5.4;
+        const lfoG = ctx.createGain(); lfoG.gain.setValueAtTime(0, now);
+        lfoG.gain.linearRampToValueAtTime(0.006 * v.src.playbackRate.value, now + 0.6);
+        lfo.connect(lfoG); lfoG.connect(v.src.playbackRate); lfo.start(now);
+        bow = { s, kind: 'sample', v, lfo, lfoG, lastNote: null };
+      } else {
+        const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = hz;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1300;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(0.2, now + 0.12);
+        osc.connect(lp); lp.connect(g); g.connect(master); osc.start(now);
+        bow = { s, kind: 'synth', osc, g, lastNote: null };
+      }
     }
     s.bowing = true;
+    bowEl.classList.add('bowing');
     moveBow(x);
   };
   const moveBow = (x) => {
     if (!bow) return;
-    const s = bow.s, semis = semisAt(x), hz = freq(s.open + semis), now = ctx.currentTime;
+    const s = bow.s, semis = semisAt(x), hz = freq(s.open + semis);
     if (bow.kind === 'sample') {
-      const rate = hz / freq(bow.v.base);
+      const rate = hz / freq(bow.v.base), now = ctx.currentTime;
       bow.v.src.playbackRate.setTargetAtTime(rate, now, 0.03);
       bow.lfoG.gain.setTargetAtTime(0.006 * rate, now, 0.2);
-    } else {
-      bow.osc.frequency.setTargetAtTime(hz, now, 0.025);
+    } else if (bow.kind === 'synth') {
+      bow.osc.frequency.setTargetAtTime(hz, ctx.currentTime, 0.025);
     }
     s.stopX = semis === 0 ? nutX : Math.min(x, xAt(MAX_SEMIS));
     s.omega = visOmega(hz);
@@ -430,63 +436,99 @@
   };
   const stopBow = () => {
     if (!bow) return;
-    const now = ctx.currentTime, b = bow;
-    const g = b.kind === 'sample' ? b.v.g : b.g;
-    g.gain.cancelScheduledValues(now);
-    g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
-    g.gain.setTargetAtTime(0.0001, now, 0.12);
-    if (b.kind === 'sample') { b.v.src.stop(now + 0.8); b.lfo.stop(now + 0.8); } else b.osc.stop(now + 0.8);
+    const b = bow;
+    if (b.kind !== 'silent') {
+      const now = ctx.currentTime, g = b.kind === 'sample' ? b.v.g : b.g;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
+      g.gain.setTargetAtTime(0.0001, now, 0.12);
+      if (b.kind === 'sample') { b.v.src.stop(now + 0.8); b.lfo.stop(now + 0.8); } else b.osc.stop(now + 0.8);
+    }
     b.s.bowing = false; b.s.t = 0; b.s.amp = 3;
     bow = null;
+    bowEl.classList.remove('bowing');
   };
 
+  /* ---- Bow cursor ---- */
+  const BOW_HX = 6.7, BOW_HY = 37;   // contact point: middle of the bow hair
+  const bowEl = document.createElement('div');
+  bowEl.id = 'bowCursor';
+  bowEl.setAttribute('aria-hidden', 'true');
+  bowEl.innerHTML = `<svg viewBox="0 0 24 100">
+      <path class="stick" d="M14.5 3 Q11.2 44 14.5 84" fill="none" stroke-width="2.4" stroke-linecap="round"/>
+      <line class="hair" x1="8" y1="6" x2="8" y2="82" stroke-width="1.8" stroke-linecap="round"/>
+      <path class="tip" d="M7 7 L15.5 1.5 L15.5 7.5 Z"/>
+      <rect class="frog" x="5.5" y="79" width="10" height="11" rx="1.6"/>
+      <circle cx="10.5" cy="84.5" r="1.5" fill="#e0f2fe"/>
+      <rect class="screw" x="12.6" y="89" width="3.2" height="8" rx="1"/>
+    </svg>`;
+  document.body.appendChild(bowEl);
+  const useBowCursor = finePointer;
+  if (useBowCursor) hero.classList.add('bow-cursor');
+  const cursor = { x: 0, y: 0, vx: 0, angle: -14, inside: false, overLink: false };
+  const placeBow = () => {
+    cursor.angle += ((-14 + Math.max(-14, Math.min(14, cursor.vx * 0.9))) - cursor.angle) * 0.2;
+    cursor.vx *= 0.85;
+    bowEl.style.transform = `translate(${cursor.x - BOW_HX}px, ${cursor.y - BOW_HY}px) rotate(${cursor.angle}deg)`;
+    bowEl.classList.toggle('show', useBowCursor && cursor.inside && !cursor.overLink);
+  };
+  const flick = () => { bowEl.classList.remove('flick'); void bowEl.offsetWidth; bowEl.classList.add('flick'); };
+
+  /* ---- Strike = pizzicato, rest on a string = bowing ---- */
   const localPos = (e) => { const r = hero.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-  const stringNear = (x, y) => {
+  const stringNear = (x, y, maxD) => {
     if (x < nutX || x > bridgeX) return null;
-    let best = null, bd = Math.min(18, gap / 2);
+    let best = null, bd = Math.min(maxD, gap / 2);
     strings.forEach((s) => { const d = Math.abs(y - s.y); if (d < bd) { bd = d; best = s; } });
     return best;
   };
+  const DWELL_MS = 260;
+  let prev = null, hover = { s: null, since: 0 }, lastX = 0;
 
-  let prev = null;
   hero.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') return;
     const { x, y } = localPos(e);
-    if (bow) { moveBow(x); prev = { x, y }; return; }
-    if (e.pointerType === 'mouse') hero.style.cursor = stringNear(x, y) ? 'pointer' : '';
+    cursor.vx += (e.clientX - cursor.x) * 0.3;
+    cursor.x = e.clientX; cursor.y = e.clientY; cursor.inside = true;
+    cursor.overLink = !!e.target.closest('a, button');
+    lastX = x;
+    if (bow) {
+      if (stringNear(x, y, 16) === bow.s) moveBow(x); else { stopBow(); hover = { s: null, since: 0 }; }
+    }
+    const near = stringNear(x, y, 9);
+    if (near !== hover.s) hover = { s: near, since: performance.now() };
     if (prev && x >= nutX && x <= bridgeX) {
       const speed = Math.hypot(x - prev.x, y - prev.y);
       strings.forEach((s) => {
-        if ((prev.y - s.y) * (y - s.y) <= 0 && prev.y !== y && s.cool <= 0 && !s.bowing) pluckString(s, x, speed * 0.5);
+        if ((prev.y - s.y) * (y - s.y) < 0 && s.cool <= 0 && !s.bowing) { pluckString(s, x, speed * 0.5); flick(); }
       });
     }
     prev = { x, y };
   }, { passive: true });
-  hero.addEventListener('pointerleave', () => { prev = null; if (!bow) hero.style.cursor = ''; });
+  const leave = () => { prev = null; cursor.inside = false; hover = { s: null, since: 0 }; stopBow(); };
+  hero.addEventListener('pointerleave', leave);
+  window.addEventListener('blur', leave);
+  // A click anywhere on the cello wakes the audio (browsers need a gesture); on a string it also plucks.
   hero.addEventListener('pointerdown', (e) => {
     if (e.target.closest('a, button')) return;
-    const { x, y } = localPos(e);
-    const s = stringNear(x, y);
-    if (!s) return;
     if (!soundOn) { soundOn = true; soundBtn.setAttribute('aria-pressed', 'true'); }
-    if (e.pointerType === 'touch') { ensureAudio(); pluckString(s, x, 10); return; }
-    e.preventDefault();
-    hero.setPointerCapture(e.pointerId);
-    hero.style.cursor = 'grabbing';
-    startBow(s, x);
+    ensureAudio();
+    const { x, y } = localPos(e);
+    const s = stringNear(x, y, 18);
+    if (s && !s.bowing) { pluckString(s, x, 10); flick(); }
   });
-  const endBow = () => { stopBow(); hero.style.cursor = ''; };
-  hero.addEventListener('pointerup', endBow);
-  hero.addEventListener('pointercancel', endBow);
-  window.addEventListener('blur', endBow);
   hero.addEventListener('touchmove', (e) => {
     const r = hero.getBoundingClientRect(), tt = e.touches[0];
     const x = tt.clientX - r.left, y = tt.clientY - r.top;
     if (prev && x >= nutX && x <= bridgeX) {
-      strings.forEach((s) => { if ((prev.y - s.y) * (y - s.y) <= 0 && prev.y !== y && s.cool <= 0) pluckString(s, x, 8); });
+      strings.forEach((s) => { if ((prev.y - s.y) * (y - s.y) < 0 && s.cool <= 0) pluckString(s, x, 8); });
     }
     prev = { x, y };
   }, { passive: true });
   hero.addEventListener('touchend', () => { prev = null; });
+  const checkDwell = () => {
+    if (!bow && hover.s && cursor.inside && !cursor.overLink && performance.now() - hover.since > DWELL_MS) startBow(hover.s, lastX);
+  };
 
   let heroVisible = true;
   new IntersectionObserver(([e]) => { heroVisible = e.isIntersecting; }).observe(hero);
@@ -494,7 +536,9 @@
   let idle = 0;
   const frame = () => {
     requestAnimationFrame(frame);
+    if (useBowCursor) placeBow();
     if (!heroVisible) return;
+    checkDwell();
     updateHero();
     idle += 0.016;
     g2d.clearRect(0, 0, W, H);

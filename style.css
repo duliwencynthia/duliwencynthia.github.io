@@ -195,6 +195,30 @@ strong { font-weight: 600; }
 .scroll-cue:hover { color: var(--sky); }
 .hint { position: absolute; bottom: .8rem; left: 50%; transform: translateX(-50%); z-index: 2; font-size: .7rem; color: var(--muted); opacity: .7; margin: 0; white-space: nowrap; }
 
+/* Bow cursor */
+.hero.bow-cursor, .hero.bow-cursor * { cursor: none; }
+.hero.bow-cursor a, .hero.bow-cursor button, .hero.bow-cursor a * { cursor: pointer; }
+#bowCursor {
+  position: fixed; left: 0; top: 0; z-index: 60; width: 20px; height: 84px;
+  pointer-events: none; opacity: 0; transition: opacity .15s;
+  transform-origin: 6.7px 37px; will-change: transform;
+  filter: drop-shadow(0 2px 3px rgba(3, 40, 70, .35));
+}
+#bowCursor.show { opacity: 1; }
+#bowCursor svg { width: 100%; height: 100%; display: block; overflow: visible; }
+#bowCursor .stick { stroke: #5a3417; }
+#bowCursor .hair { stroke: #efe6d2; transition: stroke .2s; }
+#bowCursor .tip { fill: #f5efe0; }
+#bowCursor .frog { fill: #1c1917; }
+#bowCursor .screw { fill: #cbd5e1; }
+#bowCursor.bowing .hair { stroke: var(--sky-light); }
+#bowCursor.bowing svg { animation: bowStroke 1.2s ease-in-out infinite alternate; }
+#bowCursor.flick svg { animation: flick .28s ease-out; }
+@keyframes bowStroke { from { transform: translateY(-18px); } to { transform: translateY(18px); } }
+@keyframes flick { 35% { transform: rotate(10deg); } }
+[data-theme="dark"] #bowCursor { filter: drop-shadow(0 0 1.5px rgba(230, 242, 251, .7)); }
+[data-theme="dark"] #bowCursor .stick { stroke: #a0643a; }
+
 /* ---------- Sections ---------- */
 main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 section { padding: 6.5rem 0; }
